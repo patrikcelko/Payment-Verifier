@@ -33,6 +33,9 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["payment_verifier*"]
 
+[tool.setuptools.package-data]
+payment_verifier = ["static/**/*", "templates/**/*"]
+
 [tool.ruff]
 target-version = "py313"
 line-length = 120

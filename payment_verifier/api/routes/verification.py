@@ -4,9 +4,12 @@ Verification endpoint
 """
 
 import json
+from pathlib import Path
 
 from fastapi import APIRouter, Query, Request, Response
+from fastapi.templating import Jinja2Templates
 
+from payment_verifier import __version__
 from payment_verifier.api.dependencies import DBSession
 from payment_verifier.database.models.project import (
     BLOCKED_STATUSES,
@@ -17,6 +20,9 @@ from payment_verifier.database.models.request_log import create_request_log
 from payment_verifier.database.models.status_message import get_message_for_status
 
 router = APIRouter()
+
+_BASE_DIR = Path(__file__).parent.parent.parent
+templates = Jinja2Templates(directory=str(_BASE_DIR / 'templates'))
 
 
 def _client_ip(request: Request) -> str:
@@ -29,19 +35,24 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.get("/", summary="Verify payment status", tags=["verification"])
+@router.get('/', summary='Verify payment status', tags=['verification'])
 async def check(
     request: Request,
-    project: str = Query(..., description="Project name to verify"),
+    project: str | None = Query(None, description='Project name to verify'),
     *,
     session: DBSession,
 ) -> Response:
     """Return payment status for the given project.
 
+    - No project parameter: Returns admin dashboard.
     - 200 OK - payment is verified.
     - 402 Payment Required - payment is missing / unpaid (JSON body with message).
     - 404 Not Found - project does not exist in the registry.
     """
+
+    # If no project is specified, serve the admin dashboard
+    if project is None:
+        return templates.TemplateResponse(request, 'admin.html', {'version': __version__})
 
     row = await get_project_by_name(session, project)
 

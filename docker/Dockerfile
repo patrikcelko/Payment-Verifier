@@ -6,8 +6,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
+COPY pyproject.toml .
+RUN pip install --no-cache-dir fastapi uvicorn[standard] sqlalchemy[asyncio] asyncpg psycopg2-binary alembic jinja2
+
 COPY . .
-RUN pip install --no-cache-dir .
+
+ENV PYTHONPATH=/app
 
 EXPOSE 8111
 

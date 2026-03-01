@@ -7,7 +7,7 @@ This system **automatically blocks project access when payments are overdue**, t
 ![Version](https://img.shields.io/badge/version-1.5.11-blue)
 ![Python 3.12](https://img.shields.io/badge/Python-3.13-red)
 
-<img width="2003" height="1255" alt="image" src="https://github.com/user-attachments/assets/5915da44-7373-4c9a-a69a-f361fed1a268" />
+<img width="2929" height="1840" alt="image" src="https://github.com/user-attachments/assets/28a3a831-9f21-41c8-9956-2a8a8731e4e5" />
 <img width="2003" height="1506" alt="image" src="https://github.com/user-attachments/assets/f4a96534-f1ad-4f85-b534-addcbae1555c" />
 
 ## Requirements
@@ -58,20 +58,20 @@ import httpx
 app = FastAPI()
 
 PAYMENT_VERIFIER_URL: str = 'http://localhost:8111'
-PROJECT_ID: int = 1
+PROJECT_NAME: str = 'my-project'
 
 async def payment_verification_middleware(request: Request, call_next: Callable) -> Response:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                f'{PAYMENT_VERIFIER_URL}/api/verification/project/{PROJECT_ID}'
+                f'{PAYMENT_VERIFIER_URL}/?project={PROJECT_NAME}'
             )
 
-            if response.status_code != 200 or not response.json().get('is_active', False):
+            if response.status_code != 200:
                 return JSONResponse(
-                    status_code=402,
-                    content=response.json() if response.status_code == 200 else {
-                        'error': 'Payment verification failed'
+                    status_code=response.status_code,
+                    content=response.json() if response.headers.get('content-type') == 'application/json' else {
+                        'error': response.text
                     }
                 )
         except Exception:
@@ -103,7 +103,7 @@ const app = express();
 app.use(express.json());
 
 const PAYMENT_VERIFIER_URL: string = 'http://localhost:8111';
-const PROJECT_ID: number = 1;
+const PROJECT_NAME: string = 'my-project';
 
 const paymentVerificationMiddleware = async (
   req: Request,
@@ -112,17 +112,21 @@ const paymentVerificationMiddleware = async (
 ): Promise<void> => {
   try {
     const response = await axios.get(
-      `${PAYMENT_VERIFIER_URL}/api/verification/project/${PROJECT_ID}`
+      `${PAYMENT_VERIFIER_URL}/?project=${PROJECT_NAME}`
     );
 
-    if (!response.data.is_active) {
-      res.status(402).json(response.data);
+    if (response.status !== 200) {
+      res.status(response.status).json(response.data);
       return;
     }
 
     next();
   } catch (error) {
-    res.status(503).json({ error: 'Payment verification service unavailable' });
+    if (axios.isAxiosError(error) && error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(503).json({ error: 'Payment verification service unavailable' });
+    }
   }
 };
 
@@ -156,19 +160,19 @@ use Illuminate\Support\Facades\Http;
 class PaymentVerificationMiddleware
 {
     private string $paymentVerifierUrl = 'http://localhost:8111';
-    private int $projectId = 1;
+    private string $projectName = 'my-project';
 
     public function handle(Request $request, Closure $next): Response
     {
         try {
             $response = Http::get(
-                "{$this->paymentVerifierUrl}/api/verification/project/{$this->projectId}"
+                "{$this->paymentVerifierUrl}/?project={$this->projectName}"
             );
 
-            if (!$response->successful() || !$response->json('is_active', false)) {
+            if (!$response->successful()) {
                 return response()->json(
-                    $response->json() ?? ['error' => 'Payment verification failed'],
-                    402
+                    $response->json() ?? ['error' => $response->body()],
+                    $response->status()
                 );
             }
         } catch (\Exception $e) {
