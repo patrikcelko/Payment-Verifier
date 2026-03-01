@@ -42,10 +42,10 @@ async def test_unknown_project_returns_404(client: AsyncClient) -> None:
 async def test_missing_query_param_returns_dashboard(client: AsyncClient) -> None:
     """Test missing query parameter returns admin dashboard (HTTP 200)"""
 
-    resp = await client.get('/')
+    resp = await client.get("/")
     assert resp.status_code == 200
-    assert 'text/html' in resp.headers['content-type']
-    assert 'Payment Verifier' in resp.text or 'admin' in resp.text.lower()
+    assert "text/html" in resp.headers["content-type"]
+    assert "Payment Verifier" in resp.text or "admin" in resp.text.lower()
 
 
 async def test_overdue_returns_402(client: AsyncClient, session: AsyncSession) -> None:

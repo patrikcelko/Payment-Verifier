@@ -22,7 +22,7 @@ from payment_verifier.database.models.status_message import get_message_for_stat
 router = APIRouter()
 
 _BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=str(_BASE_DIR / 'templates'))
+templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
 
 
 def _client_ip(request: Request) -> str:
@@ -35,10 +35,10 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.get('/', summary='Verify payment status', tags=['verification'])
+@router.get("/", summary="Verify payment status", tags=["verification"])
 async def check(
     request: Request,
-    project: str | None = Query(None, description='Project name to verify'),
+    project: str | None = Query(None, description="Project name to verify"),
     *,
     session: DBSession,
 ) -> Response:
@@ -52,7 +52,7 @@ async def check(
 
     # If no project is specified, serve the admin dashboard
     if project is None:
-        return templates.TemplateResponse(request, 'admin.html', {'version': __version__})
+        return templates.TemplateResponse(request, "admin.html", {"version": __version__})
 
     row = await get_project_by_name(session, project)
 
