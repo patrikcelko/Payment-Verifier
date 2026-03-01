@@ -3,8 +3,6 @@ Project management
 ==================
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, HTTPException
 
 from payment_verifier.api.dependencies import DBSession

@@ -3,8 +3,6 @@ Project schemas
 ================
 """
 
-from __future__ import annotations
-
 import datetime
 from typing import Literal
 

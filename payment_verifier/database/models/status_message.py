@@ -3,8 +3,6 @@ Status Message model
 ====================
 """
 
-from __future__ import annotations
-
 from sqlalchemy import ForeignKey, Integer, String, Text, and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column

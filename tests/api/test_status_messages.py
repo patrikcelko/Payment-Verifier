@@ -3,8 +3,6 @@ Tests status-messages
 =====================
 """
 
-from __future__ import annotations
-
 from httpx import AsyncClient
 
 from payment_verifier.database.models.status_message import DEFAULT_MESSAGES

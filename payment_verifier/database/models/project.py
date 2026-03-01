@@ -3,8 +3,6 @@ Project model
 =============
 """
 
-from __future__ import annotations
-
 import datetime
 
 from sqlalchemy import DateTime, String, Text, func, select

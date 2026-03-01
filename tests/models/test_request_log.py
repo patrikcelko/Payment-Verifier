@@ -3,8 +3,6 @@ Tests Request logs
 ==================
 """
 
-from __future__ import annotations
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from payment_verifier.database.models.request_log import (

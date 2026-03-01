@@ -3,8 +3,6 @@ Test fixtures
 =============
 """
 
-from __future__ import annotations
-
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -29,7 +27,7 @@ TestSessionFactory: async_sessionmaker[AsyncSession] = async_sessionmaker(
 
 
 @pytest.fixture(autouse=True)
-async def _setup_db() -> AsyncGenerator[None, None]:
+async def _setup_db() -> AsyncGenerator[None]:
     """Create all tables before each test and drop them after."""
 
     async with engine.begin() as conn:
@@ -41,7 +39,7 @@ async def _setup_db() -> AsyncGenerator[None, None]:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-async def _override_get_session() -> AsyncGenerator[AsyncSession, None]:
+async def _override_get_session() -> AsyncGenerator[AsyncSession]:
     """Override get_session dependency to use test database session."""
 
     async with TestSessionFactory() as session:
@@ -49,7 +47,7 @@ async def _override_get_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture()
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client() -> AsyncGenerator[AsyncClient]:
     """Async HTTP client wired to the FastAPI app with test DB."""
 
     from payment_verifier import app
@@ -64,7 +62,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture()
-async def session() -> AsyncGenerator[AsyncSession, None]:
+async def session() -> AsyncGenerator[AsyncSession]:
     """Raw async session for direct DB operations in tests."""
 
     async with TestSessionFactory() as s:

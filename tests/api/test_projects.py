@@ -3,8 +3,6 @@ Tests project endpoints
 =======================
 """
 
-from __future__ import annotations
-
 from httpx import AsyncClient
 
 

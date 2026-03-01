@@ -3,8 +3,6 @@ Log endpoints
 =============
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, Query
 
 from payment_verifier.api.dependencies import DBSession

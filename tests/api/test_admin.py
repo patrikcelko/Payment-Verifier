@@ -3,8 +3,6 @@ Tests admin endpoint
 ====================
 """
 
-from __future__ import annotations
-
 from httpx import AsyncClient
 
 from payment_verifier import __version__
