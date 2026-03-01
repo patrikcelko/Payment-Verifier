@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Payment Verifier - Admin</title>
+    <link rel="icon" href="/static/assets/icons/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/static/assets/css/admin.css?v={{ version }}">
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="header">
+            <div class="logo-block">
+                <img src="/static/assets/images/logo.png" alt="Logo" class="header-logo">
+                <div class="logo-text-wrap">
+                    <h1><span class="accent">Payment</span> Verifier</h1>
+                    <p class="subtitle">Protect your revenue. Verify every payment.</p>
+                </div>
+            </div>
+            <div class="meta">
+                <div class="meta-item">
+                    <img src="/static/assets/icons/activity.svg" class="meta-icon svg-icon" width="14" height="14"
+                        alt="">
+                    <span class="meta-label">Blocked</span>
+                    <span class="meta-value" id="blocked-count" style="color:var(--unpaid)">0</span>
+                </div>
+                <span class="meta-separator">&middot;</span>
+                <div class="meta-item">
+                    <img src="/static/assets/icons/grid.svg" class="meta-icon svg-icon" width="14" height="14" alt="">
+                    <span class="meta-label">Projects</span>
+                    <span class="meta-value" id="total-count">0</span>
+                </div>
+                <span class="meta-separator">&middot;</span>
+                <div class="meta-item">
+                    <img src="/static/assets/icons/check-verified.svg" class="meta-icon svg-icon" width="14" height="14"
+                        alt="">
+                    <span class="meta-label">Active</span>
+                    <span class="meta-value" id="ok-count">0</span>
+                </div>
+                <span class="meta-separator">&middot;</span>
+                <div class="meta-item">
+                    <img src="/static/assets/icons/file-text.svg" class="meta-icon svg-icon" width="14" height="14"
+                        alt="">
+                    <span class="meta-label">Requests</span>
+                    <span class="meta-value" id="requests-count">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('projects')">Projects</button>
+            <button class="tab" onclick="switchTab('logs')">Request Logs <span class="tab-badge" id="logs-badge"
+                    style="display:none">0</span></button>
+        </div>
+
+        <div class="card tab-content active" id="tab-projects">
+            <div class="toolbar">
+                <div class="search">
+                    <img src="/static/assets/icons/search.svg" class="search-icon svg-icon" width="16" height="16"
+                        alt="">
+                    <input type="text" id="search-input" placeholder="Search projects, customers…" autocomplete="off">
+                </div>
+                <div class="pill">
+                    <img src="/static/assets/icons/grid.svg" class="svg-icon" width="14" height="14" alt="">
+                    Showing <span id="count">0</span>
+                </div>
+                <button class="btn" onclick="openGlobalMsgEditor()" title="Global status messages (M)">
+                    <img src="/static/assets/icons/mail.svg" class="svg-icon" width="13" height="13" alt="">
+                    Global Messages
+                </button>
+                <button class="btn" onclick="openCreateModal()">
+                    <img src="/static/assets/icons/plus.svg" class="svg-icon" width="14" height="14" alt="">
+                    Add Project
+                </button>
+            </div>
+
+            <div id="projects-grid" class="grid"></div>
+            <div id="empty-state" class="empty" style="display:none">
+                <img src="/static/assets/icons/plus.svg" class="svg-icon" width="56" height="56" alt="">
+                <p>No projects registered yet</p>
+            </div>
+            <div id="empty-search" class="empty-search" style="display:none">
+                <img src="/static/assets/icons/search.svg" class="svg-icon" width="44" height="44" alt="">
+                <p>No projects match your search</p>
+                <small>Try a different search term</small>
+            </div>
+        </div>
+
+        <div class="card tab-content" id="tab-logs">
+            <div class="stats-bar-wrap" id="stats-bar-wrap" style="display:none">
+                <div class="stats-bar-labels">
+                    <span><span class="dot" style="background:var(--ok)"></span> 200 OK: <strong
+                            id="stat-200">0</strong></span>
+                    <span><span class="dot" style="background:var(--unpaid)"></span> 402 Unpaid: <strong
+                            id="stat-402">0</strong></span>
+                    <span><span class="dot" style="background:var(--muted)"></span> 404 Not Found: <strong
+                            id="stat-404">0</strong></span>
+                </div>
+                <div class="stats-bar">
+                    <div class="bar-200" id="bar-200" style="width:0"></div>
+                    <div class="bar-402" id="bar-402" style="width:0"></div>
+                    <div class="bar-404" id="bar-404" style="width:0"></div>
+                </div>
+            </div>
+            <div class="logs-toolbar">
+                <div class="filter-chips">
+                    <button class="chip active" onclick="filterLogs(null)">All <span class="chip-count"
+                            id="chip-all"></span></button>
+                    <button class="chip" onclick="filterLogs(200)">200 OK</button>
+                    <button class="chip" onclick="filterLogs(402)">402 Unpaid</button>
+                    <button class="chip" onclick="filterLogs(404)">404 Not Found</button>
+                </div>
+                <div class="logs-search">
+                    <img src="/static/assets/icons/search.svg" class="svg-icon" width="13" height="13" alt="">
+                    <input type="text" id="logs-search-input" placeholder="Filter by project…" autocomplete="off">
+                </div>
+            </div>
+            <div class="logs-toolbar">
+                <div class="pill">
+                    <img src="/static/assets/icons/file-text.svg" class="svg-icon" width="14" height="14" alt="">
+                    Matching: <span id="logs-total">0</span>
+                </div>
+                <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                    <button class="btn btn-sm" id="logs-prev" onclick="logsPage(-1)" disabled>
+                        <img src="/static/assets/icons/chevron-left.svg" class="svg-icon" width="12" height="12" alt="">
+                        Prev
+                    </button>
+                    <span class="pill" id="logs-page-info">1 / 1</span>
+                    <button class="btn btn-sm" id="logs-next" onclick="logsPage(1)">
+                        Next <img src="/static/assets/icons/chevron-right.svg" class="svg-icon" width="12" height="12"
+                            alt="">
+                    </button>
+                    <button class="btn btn-sm" onclick="fetchLogs()">
+                        <img src="/static/assets/icons/refresh.svg" class="svg-icon" width="12" height="12" alt="">
+                        Refresh
+                    </button>
+                    <button class="btn btn-sm" onclick="exportCSV()">
+                        <img src="/static/assets/icons/download.svg" class="svg-icon" width="12" height="12" alt="">
+                        Export
+                    </button>
+                    <label class="toggle-wrap" title="Auto-refresh every 10s">
+                        <div class="toggle-track" id="auto-refresh-toggle" onclick="toggleAutoRefresh()"></div>
+                        Auto
+                    </label>
+                </div>
+            </div>
+            <div class="logs-scroll">
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Project</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                            <th>Client IP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body"></tbody>
+                </table>
+            </div>
+            <div id="logs-empty" class="empty" style="display:none">
+                <img src="/static/assets/icons/file-text.svg" class="svg-icon" width="56" height="56" alt="">
+                <p>No request logs recorded yet</p>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="app-footer">
+        <p>&copy; 2025 &ndash; 2026 Payment Verifier (v{{ version }}) &nbsp;|&nbsp; Created by <a
+                href="https://patrikcelko.com" target="_blank" rel="noopener">Patrik Čelko</a></p>
+        <p class="footer-gh">Check this project on <a href="https://github.com/patrikcelko/Payment-Verifier"
+                target="_blank" rel="noopener"><svg class="gh-icon" viewBox="0 0 16 16" width="14" height="14"
+                    fill="currentColor">
+                    <path
+                        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                </svg>GitHub</a></p>
+    </footer>
+
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-title">Add Project</h2>
+            <input type="hidden" id="modal-project-id">
+            <div id="modal-name-group">
+                <label for="modal-name">Project Name</label>
+                <input type="text" id="modal-name" placeholder="e.g. Sport-Betting-App" autocomplete="off">
+            </div>
+            <div id="modal-status-group">
+                <label for="modal-status">Status</label>
+                <select id="modal-status">
+                    <option value="OK">OK</option>
+                    <option value="UNPAID">UNPAID</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="OVERDUE">OVERDUE</option>
+                    <option value="PARTIAL">PARTIAL</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                </select>
+            </div>
+            <p class="modal-section-label">Customer</p>
+            <label for="modal-customer-name">Company / Name</label>
+            <input type="text" id="modal-customer-name" placeholder="e.g. Acme Corp" autocomplete="off">
+            <label for="modal-customer-address">Address</label>
+            <textarea id="modal-customer-address" rows="2" placeholder="e.g. 123 Main St, Prague"></textarea>
+            <label for="modal-project-url">Project URL</label>
+            <input type="url" id="modal-project-url" placeholder="e.g. https://example.com" autocomplete="off">
+            <p class="modal-section-label">Contact Person</p>
+            <label for="modal-contact-person">Name</label>
+            <input type="text" id="modal-contact-person" placeholder="e.g. John Doe" autocomplete="off">
+            <label for="modal-contact-email">Email</label>
+            <input type="email" id="modal-contact-email" placeholder="e.g. john@acme.com" autocomplete="off">
+            <label for="modal-contact-phone">Phone</label>
+            <input type="tel" id="modal-contact-phone" placeholder="e.g. +421 900 123 456" autocomplete="off">
+            <div class="modal-actions">
+                <button class="btn" style="border-color:var(--border);background:var(--bg);color:var(--muted)"
+                    onclick="closeModal()">Cancel</button>
+                <button class="btn" id="modal-submit" onclick="submitModal()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="me-overlay" id="me-global-overlay">
+        <div class="me-panel">
+            <div class="me-header">
+                <div class="me-title-wrap">
+                    <img src="/static/assets/icons/mail.svg" class="svg-icon" width="20" height="20" alt="">
+                    <div class="me-title-text">
+                        <h2>Global Status Messages</h2>
+                        <p>Default messages returned on HTTP 402</p>
+                    </div>
+                </div>
+                <div class="me-actions">
+                    <button class="btn btn-sm btn-danger" onclick="resetAllGlobalMessages()">Reset All</button>
+                    <button class="me-close" onclick="closeGlobalMsgEditor()" title="Close">&times;</button>
+                </div>
+            </div>
+            <div class="me-body" id="me-global-list"></div>
+        </div>
+    </div>
+
+    <div class="me-overlay" id="me-project-overlay">
+        <div class="me-panel">
+            <div class="me-header">
+                <div class="me-title-wrap">
+                    <img src="/static/assets/icons/mail.svg" class="svg-icon" width="20" height="20" alt="">
+                    <div class="me-title-text">
+                        <h2>Messages - <span id="pmsg-project-name"></span></h2>
+                        <p>Override per-project or fall back to global defaults</p>
+                    </div>
+                </div>
+                <div class="me-actions">
+                    <button class="btn btn-sm btn-danger" onclick="resetAllProjectMessages()">Reset All</button>
+                    <button class="me-close" onclick="closeProjectMsgEditor()" title="Close">&times;</button>
+                </div>
+            </div>
+            <div class="me-body" id="me-project-list"></div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toasts"></div>
+
+    <script src="/static/assets/js/admin.js?v={{ version }}"></script>
+</body>
+
+</html>
