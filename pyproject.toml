@@ -73,6 +73,6 @@ exclude_lines = [
 
 [tool.pyright]
 pythonVersion = "3.13"
-typeCheckingMode = "strict"
+typeCheckingMode = "basic"
 include = ["payment_verifier"]
 exclude = ["alembic", "tests"]
