@@ -4,6 +4,12 @@
 
 This system **automatically blocks project access when payments are overdue**, tracks all payment-related API calls, and provides real-time monitoring of your revenue stream. Protect your business from non-paying clients with automated enforcement.
 
+![Version](https://img.shields.io/badge/version-1.5.11-blue)
+![Python 3.12](https://img.shields.io/badge/Python-3.13-red)
+
+<img width="2003" height="1255" alt="image" src="https://github.com/user-attachments/assets/5915da44-7373-4c9a-a69a-f361fed1a268" />
+<img width="2003" height="1506" alt="image" src="https://github.com/user-attachments/assets/f4a96534-f1ad-4f85-b534-addcbae1555c" />
+
 ## Requirements
 
 - **Docker** (version 20.10+)
@@ -36,80 +42,55 @@ docker compose down
 docker exec -it <container-name> bash
 ```
 
-## Advanced Integration
+## Integration Examples
 
-### Automatic Logging with Middleware
-
-For applications that need automatic logging of all payment-related requests, use these middleware examples:
+Use these middleware examples to protect all endpoints with automatic payment verification.
+If payment fails, the middleware returns 402 with the Payment Verifier response.
 
 ### Python + FastAPI (Middleware)
 
 ```python
-from typing import Any, Callable, Dict
-from fastapi import FastAPI, Request
+from typing import Callable, Dict, Any
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 import httpx
-from datetime import datetime
 
 app = FastAPI()
 
 PAYMENT_VERIFIER_URL: str = "http://localhost:8111"
 PROJECT_ID: int = 1
 
-class PaymentVerificationMiddleware:
-    def __init__(self, app: Any) -> None:
-        self.app = app
-        self.client = httpx.AsyncClient()
-
-    async def __call__(self, scope: Dict[str, Any], receive: Callable, send: Callable) -> None:
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        request = Request(scope, receive)
-        body = await request.body()
-
-        async def send_with_logging(message: Dict[str, Any]) -> None:
-            if message["type"] == "http.response.body":
-                await self.log_to_verifier(
-                    method=scope["method"],
-                    path=scope["path"],
-                    status_code=message.get("status", 200),
-                    request_body=body.decode() if body else "",
-                    response_body=message.get("body", b"").decode()
-                )
-            await send(message)
-
-        await self.app(scope, request.receive, send_with_logging)
-
-    async def log_to_verifier(
-        self,
-        method: str,
-        path: str,
-        status_code: int,
-        request_body: str,
-        response_body: str
-    ) -> None:
+async def payment_verification_middleware(request: Request, call_next: Callable) -> Response:
+    async with httpx.AsyncClient() as client:
         try:
-            await self.client.post(
-                f"{PAYMENT_VERIFIER_URL}/api/logs",
-                json={
-                    "project_id": PROJECT_ID,
-                    "endpoint": path,
-                    "method": method,
-                    "status_code": status_code,
-                    "request_body": request_body,
-                    "response_body": response_body,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
+            response = await client.get(
+                f"{PAYMENT_VERIFIER_URL}/api/verification/project/{PROJECT_ID}"
             )
-        except Exception as e:
-            print(f"Payment Verifier logging error: {e}")
 
-app.add_middleware(PaymentVerificationMiddleware)
+            if response.status_code != 200 or not response.json().get("is_active", False):
+                return JSONResponse(
+                    status_code=402,
+                    content=response.json() if response.status_code == 200 else {
+                        "error": "Payment verification failed"
+                    }
+                )
+        except Exception:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Payment verification service unavailable"}
+            )
 
-@app.post("/charge")
-async def charge(payment: Dict[str, Any]) -> Dict[str, Any]:
-    return {"status": "success", "amount": payment.get("amount")}
+    return await call_next(request)
+
+app.middleware("http")(payment_verification_middleware)
+
+@app.get("/project/{project_id}")
+async def get_project(project_id: int) -> Dict[str, Any]:
+    return {"project_id": project_id, "data": "Your project data"}
+
+@app.post("/project/{project_id}/action")
+async def project_action(project_id: int, action: Dict[str, Any]) -> Dict[str, Any]:
+    return {"status": "success", "action": action}
 ```
 
 ### JavaScript/Node.js + Express (TypeScript)
@@ -124,59 +105,35 @@ app.use(express.json());
 const PAYMENT_VERIFIER_URL: string = 'http://localhost:8111';
 const PROJECT_ID: number = 1;
 
-interface LogPayload {
-  project_id: number;
-  endpoint: string;
-  method: string;
-  status_code: number;
-  request_body: string;
-  response_body: string;
-  timestamp: string;
-}
-
 const paymentVerificationMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const originalSend = res.send.bind(res);
+  try {
+    const response = await axios.get(
+      `${PAYMENT_VERIFIER_URL}/api/verification/project/${PROJECT_ID}`
+    );
 
-  res.send = function(data: any): Response {
-    const payload: LogPayload = {
-      project_id: PROJECT_ID,
-      endpoint: req.originalUrl,
-      method: req.method,
-      status_code: res.statusCode,
-      request_body: JSON.stringify(req.body),
-      response_body: typeof data === 'string' ? data : JSON.stringify(data),
-      timestamp: new Date().toISOString()
-    };
+    if (!response.data.is_active) {
+      res.status(402).json(response.data);
+      return;
+    }
 
-    axios.post(`${PAYMENT_VERIFIER_URL}/api/logs`, payload)
-      .catch(err => console.error('Payment Verifier error:', err));
-
-    return originalSend(data);
-  };
-
-  next();
+    next();
+  } catch (error) {
+    res.status(503).json({ error: 'Payment verification service unavailable' });
+  }
 };
 
 app.use(paymentVerificationMiddleware);
 
-interface ChargeRequest {
-  amount: number;
-  currency: string;
-}
+app.get('/project/:project_id', (req: Request, res: Response) => {
+  res.json({ project_id: req.params.project_id, data: 'Your project data' });
+});
 
-app.post('/charge', (req: Request<{}, {}, ChargeRequest>, res: Response) => {
-  const { amount, currency } = req.body;
-
-  res.json({
-    status: 'success',
-    amount,
-    currency,
-    transaction_id: `txn_${Date.now()}`
-  });
+app.post('/project/:project_id/action', (req: Request, res: Response) => {
+  res.json({ status: 'success', action: req.body });
 });
 
 app.listen(3000, () => {
@@ -195,8 +152,6 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 
 class PaymentVerificationMiddleware
 {
@@ -205,48 +160,25 @@ class PaymentVerificationMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
+        try {
+            $response = Http::get(
+                "{$this->paymentVerifierUrl}/api/verification/project/{$this->projectId}"
+            );
 
-        if ($this->isPaymentRelatedRoute($request)) {
-            $this->logToPaymentVerifier(
-                method: $request->method(),
-                endpoint: $request->path(),
-                statusCode: $response->status(),
-                requestBody: json_encode($request->all()),
-                responseBody: $response->getContent()
+            if (!$response->successful() || !$response->json('is_active', false)) {
+                return response()->json(
+                    $response->json() ?? ['error' => 'Payment verification failed'],
+                    402
+                );
+            }
+        } catch (\Exception $e) {
+            return response()->json(
+                ['error' => 'Payment verification service unavailable'],
+                503
             );
         }
 
-        return $response;
-    }
-
-    private function logToPaymentVerifier(
-        string $method,
-        string $endpoint,
-        int $statusCode,
-        string $requestBody,
-        string $responseBody
-    ): void {
-        try {
-            Http::post("{$this->paymentVerifierUrl}/api/logs", [
-                'project_id' => $this->projectId,
-                'endpoint' => $endpoint,
-                'method' => $method,
-                'status_code' => $statusCode,
-                'request_body' => $requestBody,
-                'response_body' => $responseBody,
-                'timestamp' => Carbon::now()->toIso8601String()
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Payment Verifier logging failed: ' . $e->getMessage());
-        }
-    }
-
-    private function isPaymentRelatedRoute(Request $request): bool
-    {
-        return str_contains($request->path(), 'charge') ||
-               str_contains($request->path(), 'payment') ||
-               str_contains($request->path(), 'api');
+        return $next($request);
     }
 }
 
@@ -254,17 +186,10 @@ protected array $routeMiddleware = [
     'payment.verify' => \App\Http\Middleware\PaymentVerificationMiddleware::class,
 ];
 
-Route::post('/charge', function (Request $request): \Illuminate\Http\JsonResponse {
-    $amount = $request->input('amount');
-    $currency = $request->input('currency', 'USD');
-
-    return response()->json([
-        'status' => 'success',
-        'amount' => $amount,
-        'currency' => $currency,
-        'transaction_id' => 'txn_' . time()
-    ]);
-})->middleware('payment.verify');
+Route::middleware('payment.verify')->group(function () {
+    Route::get('/project/{id}', fn($id) => ['project_id' => $id, 'data' => 'Your project data']);
+    Route::post('/project/{id}/action', fn($id, Request $req) => ['status' => 'success', 'action' => $req->all()]);
+});
 ```
 
 ## License
