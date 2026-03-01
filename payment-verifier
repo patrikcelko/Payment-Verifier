@@ -9,6 +9,7 @@ source ./control/helpers.sh
 source ./control/enter.sh
 source ./control/docker.sh
 source ./control/deploy.sh
+source ./control/build.sh
 
 if [[ -z "$COMMAND" ]]; then
     error "No sub-command provided."
