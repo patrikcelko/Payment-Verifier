@@ -15,17 +15,17 @@ from payment_verifier.database.models.base import Base
 
 # Valid project statuses
 VALID_STATUSES = frozenset(
-    {"OK", "UNPAID", "PENDING", "OVERDUE", "PARTIAL", "SUSPENDED"}
+    {'OK', 'UNPAID', 'PENDING', 'OVERDUE', 'PARTIAL', 'SUSPENDED'}
 )
 
 # Statuses that block payment verification (return 402)
-BLOCKED_STATUSES = frozenset({"UNPAID", "OVERDUE", "PARTIAL", "SUSPENDED"})
+BLOCKED_STATUSES = frozenset({'UNPAID', 'OVERDUE', 'PARTIAL', 'SUSPENDED'})
 
 
 class Project(Base):
     """Registered project with its payment status."""
 
-    __tablename__ = "projects"
+    __tablename__ = 'projects'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the project."""
@@ -36,7 +36,7 @@ class Project(Base):
     """The name of the project, unique and required."""
 
     status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="OK"
+        String(50), nullable=False, default='OK'
     )
     """The current status of the project."""
 
@@ -93,7 +93,7 @@ class Project(Base):
     """Timestamp when the project was last queried."""
 
     def __repr__(self) -> str:
-        return f"<Project(id={self.id}, name={self.name!r}, status={self.status!r})>"
+        return f'<Project(id={self.id}, name={self.name!r}, status={self.status!r})>'
 
 
 async def get_project_by_name(session: AsyncSession, name: str) -> Project | None:
@@ -124,7 +124,7 @@ async def create_project(
     session: AsyncSession,
     *,
     name: str,
-    status: str = "OK",
+    status: str = 'OK',
     customer_name: str | None = None,
     customer_address: str | None = None,
     project_url: str | None = None,
@@ -152,8 +152,8 @@ async def create_project(
 
 
 _DETAIL_FIELDS = frozenset({
-    "customer_name", "customer_address", "project_url",
-    "contact_person", "contact_email", "contact_phone",
+    'customer_name', 'customer_address', 'project_url',
+    'contact_person', 'contact_email', 'contact_phone',
 })
 
 
@@ -172,12 +172,12 @@ async def update_project(
     """Update project detail fields (customer info, contact, URL)."""
 
     values = {
-        "customer_name": customer_name,
-        "customer_address": customer_address,
-        "project_url": project_url,
-        "contact_person": contact_person,
-        "contact_email": contact_email,
-        "contact_phone": contact_phone,
+        'customer_name': customer_name,
+        'customer_address': customer_address,
+        'project_url': project_url,
+        'contact_person': contact_person,
+        'contact_email': contact_email,
+        'contact_phone': contact_phone,
     }
     for field in _DETAIL_FIELDS & fields_set:
         setattr(project, field, values[field])

@@ -15,11 +15,11 @@ def _get_env(key: str, default: str) -> str:
 
 
 DATABASE_URL: str = _get_env(
-    "DATABASE_URL",
-    "postgresql+asyncpg://payment_verifier:payment_verifier@localhost:5432/payment_verifier",
+    'DATABASE_URL',
+    'postgresql+asyncpg://payment_verifier:payment_verifier@localhost:5432/payment_verifier',
 )
 
 DATABASE_URL_SYNC: str = _get_env(
-    "DATABASE_URL_SYNC",
-    "postgresql+psycopg2://payment_verifier:payment_verifier@localhost:5432/payment_verifier",
+    'DATABASE_URL_SYNC',
+    'postgresql+psycopg2://payment_verifier:payment_verifier@localhost:5432/payment_verifier',
 )

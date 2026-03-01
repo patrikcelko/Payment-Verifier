@@ -13,17 +13,17 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0005"
-down_revision: str | None = "0004"
+revision: str = '0005'
+down_revision: str | None = '0004'
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
     op.create_table(
-        "status_messages",
-        sa.Column("status", sa.String(length=50), primary_key=True),
-        sa.Column("message", sa.Text(), nullable=False),
+        'status_messages',
+        sa.Column('status', sa.String(length=50), primary_key=True),
+        sa.Column('message', sa.Text(), nullable=False),
     )
 
     op.execute(
@@ -36,4 +36,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("status_messages")
+    op.drop_table('status_messages')

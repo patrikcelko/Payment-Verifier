@@ -13,21 +13,21 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0007"
-down_revision: str | None = "0006"
+revision: str = '0007'
+down_revision: str | None = '0006'
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
     op.add_column(
-        "projects",
+        'projects',
         sa.Column(
-            "last_queried_at", sa.DateTime(timezone=True),
+            'last_queried_at', sa.DateTime(timezone=True),
             nullable=True
         ),
     )
 
 
 def downgrade() -> None:
-    op.drop_column("projects", "last_queried_at")
+    op.drop_column('projects', 'last_queried_at')

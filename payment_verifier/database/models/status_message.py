@@ -13,24 +13,24 @@ from payment_verifier.database.models.base import Base
 
 # Default messages returned in the 402 JSON body for each blocked status.
 DEFAULT_MESSAGES: dict[str, str] = {
-    "UNPAID": "Payment is required. Service access is restricted until payment is received.",
-    "OVERDUE": "Payment is overdue. Service has been suspended due to non-payment.",
-    "PARTIAL": "Partial payment received. Full payment is required to restore service access.",
-    "SUSPENDED": "Service has been suspended. Please contact the administrator.",
+    'UNPAID': 'Payment is required. Service access is restricted until payment is received.',
+    'OVERDUE': 'Payment is overdue. Service has been suspended due to non-payment.',
+    'PARTIAL': 'Partial payment received. Full payment is required to restore service access.',
+    'SUSPENDED': 'Service has been suspended. Please contact the administrator.',
 }
 
 
 class StatusMessage(Base):
     """Custom message associated with a payment status (global or per-project)."""
 
-    __tablename__ = "status_messages"
+    __tablename__ = 'status_messages'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the status message."""
 
     project_id: Mapped[int | None] = mapped_column(
         Integer,
-        ForeignKey("projects.id", ondelete="CASCADE"),
+        ForeignKey('projects.id', ondelete='CASCADE'),
         nullable=True,
         default=None,
         index=True,
@@ -44,7 +44,7 @@ class StatusMessage(Base):
     """The custom message for the given status."""
 
     def __repr__(self) -> str:
-        return f"<StatusMessage(id={self.id}, project_id={self.project_id}, status={self.status!r})>"
+        return f'<StatusMessage(id={self.id}, project_id={self.project_id}, status={self.status!r})>'
 
 
 async def list_status_messages(session: AsyncSession) -> list[StatusMessage]:
@@ -145,7 +145,7 @@ async def get_message_for_status(
     if row is not None:
         return row.message
 
-    return DEFAULT_MESSAGES.get(status, "Payment Required")
+    return DEFAULT_MESSAGES.get(status, 'Payment Required')
 
 
 async def list_project_messages(

@@ -23,23 +23,23 @@ router = APIRouter()
 
 
 @router.get(
-    "/api/logs",
+    '/api/logs',
     response_model=RequestLogListResponse,
-    summary="List verification request logs",
-    tags=["logs"],
+    summary='List verification request logs',
+    tags=['logs'],
 )
 async def api_list_logs(
     session: DBSession,
     limit: int = Query(
-        default=100, ge=1, le=1000, description="Max entries to return"
+        default=100, ge=1, le=1000, description='Max entries to return'
     ),
     offset: int = Query(
-        default=0, ge=0, description="Number of entries to skip"
+        default=0, ge=0, description='Number of entries to skip'
     ),
     status_code: int | None = Query(
-        default=None, description="Filter by HTTP status code"),
+        default=None, description='Filter by HTTP status code'),
     project_name: str | None = Query(
-        default=None, description="Filter by project name (partial match)"),
+        default=None, description='Filter by project name (partial match)'),
 ) -> RequestLogListResponse:
     """Return recent verification request logs (newest first)."""
 
@@ -56,10 +56,10 @@ async def api_list_logs(
 
 
 @router.get(
-    "/api/logs/stats",
+    '/api/logs/stats',
     response_model=LogStatsResponse,
-    summary="Request log statistics",
-    tags=["logs"],
+    summary='Request log statistics',
+    tags=['logs'],
 )
 async def api_log_stats(session: DBSession) -> dict[str, int]:
     """Return aggregated log counts grouped by status code."""

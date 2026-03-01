@@ -24,17 +24,17 @@ router = APIRouter()
 def _client_ip(request: Request) -> str:
     """Extract the client IP address, respecting `X-Forwarded-For`."""
 
-    forwarded = request.headers.get("x-forwarded-for")
+    forwarded = request.headers.get('x-forwarded-for')
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        return forwarded.split(',')[0].strip()
 
-    return request.client.host if request.client else "unknown"
+    return request.client.host if request.client else 'unknown'
 
 
-@router.get("/", summary="Verify payment status", tags=["verification"])
+@router.get('/', summary='Verify payment status', tags=['verification'])
 async def check(
     request: Request,
-    project: str = Query(..., description="Project name to verify"),
+    project: str = Query(..., description='Project name to verify'),
     *,
     session: DBSession,
 ) -> Response:
@@ -48,7 +48,7 @@ async def check(
     row = await get_project_by_name(session, project)
 
     if row is None:
-        text = "Project not found"
+        text = 'Project not found'
         await create_request_log(
             session, project_name=project, status_code=404,
             response_text=text, client_ip=_client_ip(request),
@@ -57,19 +57,19 @@ async def check(
 
     if row.status in BLOCKED_STATUSES:
         message = await get_message_for_status(session, row.status, project_id=row.id)
-        text = message or "Payment Required"
+        text = message or 'Payment Required'
         await touch_last_queried(session, row)
         await create_request_log(
             session, project_name=project, status_code=402,
             response_text=text, client_ip=_client_ip(request),
         )
-        body = json.dumps({"status": row.status, "message": message})
+        body = json.dumps({'status': row.status, 'message': message})
         return Response(
             content=body, status_code=402,
-            media_type="application/json",
+            media_type='application/json',
         )
 
-    text = "OK"
+    text = 'OK'
     await touch_last_queried(session, row)
     await create_request_log(
         session, project_name=project, status_code=200,

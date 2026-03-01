@@ -16,4 +16,4 @@ router.include_router(verification_router)
 router.include_router(projects_router)
 router.include_router(logs_router)
 
-__all__ = ["router"]
+__all__ = ['router']

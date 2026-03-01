@@ -19,7 +19,7 @@ from payment_verifier.database.models.base import Base
 class RequestLog(Base):
     """Audit log for every verification request."""
 
-    __tablename__ = "request_logs"
+    __tablename__ = 'request_logs'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the log entry."""
@@ -36,7 +36,7 @@ class RequestLog(Base):
     """Textual response returned for the request."""
 
     client_ip: Mapped[str] = mapped_column(
-        String(45), nullable=False, default="unknown"
+        String(45), nullable=False, default='unknown'
     )
     """IP address of the client making the request."""
 
@@ -49,8 +49,8 @@ class RequestLog(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<RequestLog(id={self.id}, project={self.project_name!r}, "
-            f"status={self.status_code}, ip={self.client_ip!r})>"
+            f'<RequestLog(id={self.id}, project={self.project_name!r}, '
+            f'status={self.status_code}, ip={self.client_ip!r})>'
         )
 
 
@@ -66,7 +66,7 @@ def _apply_log_filters(
         return stmt.where(RequestLog.status_code == status_code)
 
     if project_name:
-        return stmt.where(RequestLog.project_name.ilike(f"%{project_name}%"))
+        return stmt.where(RequestLog.project_name.ilike(f'%{project_name}%'))
 
     return stmt
 
@@ -77,7 +77,7 @@ async def create_request_log(
     project_name: str,
     status_code: int,
     response_text: str,
-    client_ip: str = "unknown",
+    client_ip: str = 'unknown',
 ) -> RequestLog:
     """Record a verification request in the audit log."""
 
@@ -145,7 +145,7 @@ async def get_log_stats(session: AsyncSession) -> dict[str, int]:
     for code, cnt in result.all():
         stats[str(code)] = cnt
         total += cnt
-    stats["total"] = total
+    stats['total'] = total
 
     return stats
 
@@ -170,7 +170,7 @@ async def prune_request_logs(session: AsyncSession, *, keep: int = MAX_LOG_ENTRI
         return 0
 
     del_stmt = delete(RequestLog).where(RequestLog.id < cutoff_id)
-    cursor = cast("CursorResult[Any]", await session.execute(del_stmt))
+    cursor = cast('CursorResult[Any]', await session.execute(del_stmt))
     await session.commit()
 
     return cursor.rowcount
