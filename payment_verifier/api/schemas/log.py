@@ -51,13 +51,13 @@ class LogStatsResponse(BaseModel):
     total: int = 0
     """Total number of log entries."""
 
-    ok: int = Field(default=0, alias='200')
+    ok: int = Field(default=0, alias="200")
     """Number of log entries with HTTP status code 200."""
 
-    unpaid: int = Field(default=0, alias='402')
+    unpaid: int = Field(default=0, alias="402")
     """Number of log entries with HTTP status code 402."""
 
-    not_found: int = Field(default=0, alias='404')
+    not_found: int = Field(default=0, alias="404")
     """Number of log entries with HTTP status code 404."""
 
     model_config = ConfigDict(populate_by_name=True)

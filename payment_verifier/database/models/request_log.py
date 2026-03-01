@@ -17,14 +17,12 @@ from payment_verifier.database.models.base import Base
 class RequestLog(Base):
     """Audit log for every verification request."""
 
-    __tablename__ = 'request_logs'
+    __tablename__ = "request_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the log entry."""
 
-    project_name: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    project_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     """The project name that was verified in the request."""
 
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -33,9 +31,7 @@ class RequestLog(Base):
     response_text: Mapped[str] = mapped_column(String(255), nullable=False)
     """Textual response returned for the request."""
 
-    client_ip: Mapped[str] = mapped_column(
-        String(45), nullable=False, default='unknown'
-    )
+    client_ip: Mapped[str] = mapped_column(String(45), nullable=False, default="unknown")
     """IP address of the client making the request."""
 
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -47,8 +43,8 @@ class RequestLog(Base):
 
     def __repr__(self) -> str:
         return (
-            f'<RequestLog(id={self.id}, project={self.project_name!r}, '
-            f'status={self.status_code}, ip={self.client_ip!r})>'
+            f"<RequestLog(id={self.id}, project={self.project_name!r}, "
+            f"status={self.status_code}, ip={self.client_ip!r})>"
         )
 
 
@@ -64,7 +60,7 @@ def _apply_log_filters(
         return stmt.where(RequestLog.status_code == status_code)
 
     if project_name:
-        return stmt.where(RequestLog.project_name.ilike(f'%{project_name}%'))
+        return stmt.where(RequestLog.project_name.ilike(f"%{project_name}%"))
 
     return stmt
 
@@ -75,7 +71,7 @@ async def create_request_log(
     project_name: str,
     status_code: int,
     response_text: str,
-    client_ip: str = 'unknown',
+    client_ip: str = "unknown",
 ) -> RequestLog:
     """Record a verification request in the audit log."""
 
@@ -102,12 +98,8 @@ async def list_request_logs(
 ) -> list[RequestLog]:
     """Return recent request logs, newest first, with optional filters."""
 
-    stmt = _apply_log_filters(
-        select(RequestLog), status_code=status_code, project_name=project_name
-    )
-    stmt = stmt.order_by(
-        RequestLog.created_at.desc(), RequestLog.id.desc()
-    ).limit(limit).offset(offset)
+    stmt = _apply_log_filters(select(RequestLog), status_code=status_code, project_name=project_name)
+    stmt = stmt.order_by(RequestLog.created_at.desc(), RequestLog.id.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
 
     return list(result.scalars().all())
@@ -121,10 +113,7 @@ async def count_request_logs(
 ) -> int:
     """Return total number of request log entries (with optional filters)."""
 
-    stmt = _apply_log_filters(
-        select(func.count(RequestLog.id)),
-        status_code=status_code, project_name=project_name
-    )
+    stmt = _apply_log_filters(select(func.count(RequestLog.id)), status_code=status_code, project_name=project_name)
     result = await session.execute(stmt)
 
     return result.scalar_one()
@@ -133,9 +122,7 @@ async def count_request_logs(
 async def get_log_stats(session: AsyncSession) -> dict[str, int]:
     """Return request count grouped by status code."""
 
-    stmt = select(
-        RequestLog.status_code, func.count(RequestLog.id)
-    ).group_by(RequestLog.status_code)
+    stmt = select(RequestLog.status_code, func.count(RequestLog.id)).group_by(RequestLog.status_code)
 
     result = await session.execute(stmt)
     stats: dict[str, int] = {}
@@ -143,7 +130,7 @@ async def get_log_stats(session: AsyncSession) -> dict[str, int]:
     for code, cnt in result.all():
         stats[str(code)] = cnt
         total += cnt
-    stats['total'] = total
+    stats["total"] = total
 
     return stats
 
@@ -159,16 +146,14 @@ async def prune_request_logs(session: AsyncSession, *, keep: int = MAX_LOG_ENTRI
     if total <= keep:
         return 0
 
-    cutoff_stmt = select(RequestLog.id).order_by(
-        RequestLog.id.desc()
-    ).limit(1).offset(keep - 1)
+    cutoff_stmt = select(RequestLog.id).order_by(RequestLog.id.desc()).limit(1).offset(keep - 1)
     cutoff_result = await session.execute(cutoff_stmt)
     cutoff_id: int | None = cutoff_result.scalar_one_or_none()
     if cutoff_id is None:
         return 0
 
     del_stmt = delete(RequestLog).where(RequestLog.id < cutoff_id)
-    cursor = cast('CursorResult[Any]', await session.execute(del_stmt))
+    cursor = cast("CursorResult[Any]", await session.execute(del_stmt))
     await session.commit()
 
     return cursor.rowcount

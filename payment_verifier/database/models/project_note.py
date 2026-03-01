@@ -15,13 +15,16 @@ from payment_verifier.database.models.base import Base
 class ProjectNote(Base):
     """A single note/comment attached to a project."""
 
-    __tablename__ = 'project_notes'
+    __tablename__ = "project_notes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the note."""
 
     project_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True,
+        Integer,
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     """Foreign key to the project this note belongs to."""
 
@@ -36,15 +39,13 @@ class ProjectNote(Base):
     """Timestamp when the note was created."""
 
     def __repr__(self) -> str:
-        return f'<ProjectNote(id={self.id}, project_id={self.project_id})>'
+        return f"<ProjectNote(id={self.id}, project_id={self.project_id})>"
 
 
 async def list_notes(session: AsyncSession, project_id: int) -> list[ProjectNote]:
     """Return all notes for a project, newest first."""
 
-    stmt = select(ProjectNote).where(
-        ProjectNote.project_id == project_id
-    ).order_by(ProjectNote.created_at.desc())
+    stmt = select(ProjectNote).where(ProjectNote.project_id == project_id).order_by(ProjectNote.created_at.desc())
     result = await session.execute(stmt)
 
     return list(result.scalars().all())

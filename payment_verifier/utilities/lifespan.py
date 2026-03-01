@@ -28,9 +28,9 @@ async def _periodic_log_prune() -> None:
             async with async_session_factory() as session:
                 deleted = await prune_request_logs(session)
             if deleted:
-                logger.info(f'Pruned {deleted} old request log(s)')
+                logger.info(f"Pruned {deleted} old request log(s)")
         except Exception:
-            logger.exception('Error during log pruning')
+            logger.exception("Error during log pruning")
 
 
 @asynccontextmanager

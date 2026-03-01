@@ -10,9 +10,9 @@ from payment_verifier.database.models.request_log import RequestLog
 from payment_verifier.database.models.status_message import StatusMessage
 
 __all__ = [
-    'Base',
-    'Project',
-    'ProjectNote',
-    'RequestLog',
-    'StatusMessage',
+    "Base",
+    "Project",
+    "ProjectNote",
+    "RequestLog",
+    "StatusMessage",
 ]

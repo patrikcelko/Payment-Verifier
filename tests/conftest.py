@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import (
 from payment_verifier.database.connection import get_session
 from payment_verifier.database.models import Base
 
-TEST_DATABASE_URL = 'sqlite+aiosqlite:///:memory:'
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionFactory: async_sessionmaker[AsyncSession] = async_sessionmaker(
@@ -55,7 +55,7 @@ async def client() -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_session] = _override_get_session
     transport = ASGITransport(app=app)
 
-    async with AsyncClient(transport=transport, base_url='http://test') as ac:
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
