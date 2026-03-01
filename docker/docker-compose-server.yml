@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: payment-verifier-db
+    environment:
+      POSTGRES_USER: payment_verifier
+      POSTGRES_PASSWORD: payment_verifier
+      POSTGRES_DB: payment_verifier
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_verifier"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  payment-verifier:
+    image: harbor.celko.cz/payment-verifier/payment-verifier:prod
+    container_name: payment-verifier
+    ports:
+      - "8111:8111"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://payment_verifier:payment_verifier@db:5432/payment_verifier
+      - DATABASE_URL_SYNC=postgresql+psycopg2://payment_verifier:payment_verifier@db:5432/payment_verifier
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

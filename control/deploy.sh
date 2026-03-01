@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+source "${SCRIPT_DIR}/helpers.sh"
+source "${SCRIPT_DIR}/build.sh"
+
+function deploy_payment_verifier() {
+    local SERVICE_HOST="root@x.x.x.x"  # Remote server SSH address
+    local ENV_NAME="prod"
+    local SERVER_WORK_DIR="/root/docker/payment_verifier"
+    local DOCKER_DIR="${PROJECT_ROOT}/docker"
+
+    info "Starting deployment to remote server..."
+
+    if ! ssh -o ConnectTimeout=3 "$SERVICE_HOST" "hostname" 1>/dev/null; then
+        error "Cannot connect to host ($SERVICE_HOST)."
+        exit 2
+    fi
+
+    info "Copying configuration files to server..."
+    if ! scp "${DOCKER_DIR}/docker-compose-server.yml" "$SERVICE_HOST:$SERVER_WORK_DIR/docker-compose.yml"; then
+        error "Failed to copy configuration files."
+        exit 1
+    fi
+
+    info "Pulling latest image from registry..."
+    if ! ssh "$SERVICE_HOST" "docker compose -f $SERVER_WORK_DIR/docker-compose.yml pull"; then
+        error "Failed to pull image from registry."
+        exit 1
+    fi
+
+    info "Starting containers..."
+    if ! ssh "$SERVICE_HOST" "docker compose -f $SERVER_WORK_DIR/docker-compose.yml up -d --remove-orphans"; then
+        error "Failed to start containers."
+        exit 1
+    fi
+
+    success "Deployment completed successfully."
+    return 0
+}
+
+function main() {
+    if ! deploy_payment_verifier "$@"; then
+        exit 1
+    fi
+    exit 0
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
