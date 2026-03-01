@@ -57,40 +57,40 @@ import httpx
 
 app = FastAPI()
 
-PAYMENT_VERIFIER_URL: str = "http://localhost:8111"
+PAYMENT_VERIFIER_URL: str = 'http://localhost:8111'
 PROJECT_ID: int = 1
 
 async def payment_verification_middleware(request: Request, call_next: Callable) -> Response:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                f"{PAYMENT_VERIFIER_URL}/api/verification/project/{PROJECT_ID}"
+                f'{PAYMENT_VERIFIER_URL}/api/verification/project/{PROJECT_ID}'
             )
 
-            if response.status_code != 200 or not response.json().get("is_active", False):
+            if response.status_code != 200 or not response.json().get('is_active', False):
                 return JSONResponse(
                     status_code=402,
                     content=response.json() if response.status_code == 200 else {
-                        "error": "Payment verification failed"
+                        'error': 'Payment verification failed'
                     }
                 )
         except Exception:
             return JSONResponse(
                 status_code=503,
-                content={"error": "Payment verification service unavailable"}
+                content={'error': 'Payment verification service unavailable'}
             )
 
     return await call_next(request)
 
 app.middleware("http")(payment_verification_middleware)
 
-@app.get("/project/{project_id}")
+@app.get('/project/{project_id}')
 async def get_project(project_id: int) -> Dict[str, Any]:
-    return {"project_id": project_id, "data": "Your project data"}
+    return {'project_id': project_id, 'data': 'Your project data'}
 
-@app.post("/project/{project_id}/action")
+@app.post('/project/{project_id}/action')
 async def project_action(project_id: int, action: Dict[str, Any]) -> Dict[str, Any]:
-    return {"status": "success", "action": action}
+    return {'status': 'success', 'action': action}
 ```
 
 ### JavaScript/Node.js + Express (TypeScript)
