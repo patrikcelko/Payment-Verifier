@@ -9,21 +9,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from payment_verifier.database.models.project import create_project
 from payment_verifier.database.models.request_log import list_request_logs
 from payment_verifier.database.models.status_message import upsert_status_message
+from payment_verifier.database.models.user import User
 
 
-async def test_ok_project_returns_200(client: AsyncClient, session: AsyncSession) -> None:
+async def test_ok_project_returns_200(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test OK status project returns HTTP 200"""
 
-    await create_project(session, name="Active-Project", status="OK")
+    await create_project(session, user_id=user.id, name="Active-Project", status="OK")
     resp = await client.get("/", params={"project": "Active-Project"})
     assert resp.status_code == 200
     assert resp.text == "OK"
 
 
-async def test_unpaid_project_returns_402(client: AsyncClient, session: AsyncSession) -> None:
+async def test_unpaid_project_returns_402(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test UNPAID status project returns HTTP 402 with JSON body"""
 
-    await create_project(session, name="Unpaid-Project", status="UNPAID")
+    await create_project(session, user_id=user.id, name="Unpaid-Project", status="UNPAID")
     resp = await client.get("/", params={"project": "Unpaid-Project"})
     assert resp.status_code == 402
     data = resp.json()
@@ -48,42 +49,42 @@ async def test_missing_query_param_returns_dashboard(client: AsyncClient) -> Non
     assert "Payment Verifier" in resp.text or "admin" in resp.text.lower()
 
 
-async def test_overdue_returns_402(client: AsyncClient, session: AsyncSession) -> None:
+async def test_overdue_returns_402(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test OVERDUE status returns HTTP 402"""
 
-    await create_project(session, name="Overdue-App", status="OVERDUE")
+    await create_project(session, user_id=user.id, name="Overdue-App", status="OVERDUE")
     resp = await client.get("/", params={"project": "Overdue-App"})
     assert resp.status_code == 402
 
 
-async def test_partial_returns_402(client: AsyncClient, session: AsyncSession) -> None:
+async def test_partial_returns_402(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test PARTIAL status returns HTTP 402"""
 
-    await create_project(session, name="Partial-App", status="PARTIAL")
+    await create_project(session, user_id=user.id, name="Partial-App", status="PARTIAL")
     resp = await client.get("/", params={"project": "Partial-App"})
     assert resp.status_code == 402
 
 
-async def test_suspended_returns_402(client: AsyncClient, session: AsyncSession) -> None:
+async def test_suspended_returns_402(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test SUSPENDED status returns HTTP 402"""
 
-    await create_project(session, name="Suspended-App", status="SUSPENDED")
+    await create_project(session, user_id=user.id, name="Suspended-App", status="SUSPENDED")
     resp = await client.get("/", params={"project": "Suspended-App"})
     assert resp.status_code == 402
 
 
-async def test_pending_returns_200(client: AsyncClient, session: AsyncSession) -> None:
+async def test_pending_returns_200(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test PENDING status is non-blocking and returns HTTP 200"""
 
-    await create_project(session, name="Pending-App", status="PENDING")
+    await create_project(session, user_id=user.id, name="Pending-App", status="PENDING")
     resp = await client.get("/", params={"project": "Pending-App"})
     assert resp.status_code == 200
 
 
-async def test_402_contains_json_body(client: AsyncClient, session: AsyncSession) -> None:
+async def test_402_contains_json_body(client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test 402 response contains JSON body with status and message"""
 
-    await create_project(session, name="JSON-Test", status="UNPAID")
+    await create_project(session, user_id=user.id, name="JSON-Test", status="UNPAID")
     resp = await client.get("/", params={"project": "JSON-Test"})
     assert resp.status_code == 402
     data = resp.json()
@@ -94,10 +95,11 @@ async def test_402_contains_json_body(client: AsyncClient, session: AsyncSession
 async def test_402_uses_custom_global_message(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test 402 response uses custom global status message"""
 
-    await create_project(session, name="Custom-Msg", status="OVERDUE")
+    await create_project(session, user_id=user.id, name="Custom-Msg", status="OVERDUE")
     await upsert_status_message(session, status="OVERDUE", message="Pay now!")
     resp = await client.get("/", params={"project": "Custom-Msg"})
     assert resp.status_code == 402
@@ -107,10 +109,11 @@ async def test_402_uses_custom_global_message(
 async def test_402_uses_project_specific_message(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test 402 response uses project-specific custom message over global message"""
 
-    proj = await create_project(session, name="ProjMsg", status="UNPAID")
+    proj = await create_project(session, user_id=user.id, name="ProjMsg", status="UNPAID")
     await upsert_status_message(
         session,
         status="UNPAID",
@@ -125,10 +128,11 @@ async def test_402_uses_project_specific_message(
 async def test_ok_verification_creates_log(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test successful verification creates request log entry"""
 
-    await create_project(session, name="LogTest", status="OK")
+    await create_project(session, user_id=user.id, name="LogTest", status="OK")
     await client.get("/", params={"project": "LogTest"})
     logs = await list_request_logs(session)
     assert any(e.project_name == "LogTest" and e.status_code == 200 for e in logs)
@@ -137,10 +141,11 @@ async def test_ok_verification_creates_log(
 async def test_unpaid_verification_creates_log(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test unpaid verification creates request log entry with 402 status"""
 
-    await create_project(session, name="UnpaidLog", status="UNPAID")
+    await create_project(session, user_id=user.id, name="UnpaidLog", status="UNPAID")
     await client.get("/", params={"project": "UnpaidLog"})
     logs = await list_request_logs(session)
     assert any(e.project_name == "UnpaidLog" and e.status_code == 402 for e in logs)
@@ -160,10 +165,11 @@ async def test_not_found_verification_creates_log(
 async def test_x_forwarded_for_is_stored(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test X-Forwarded-For header is stored as client IP in request log"""
 
-    await create_project(session, name="IPTest", status="OK")
+    await create_project(session, user_id=user.id, name="IPTest", status="OK")
     await client.get(
         "/",
         params={"project": "IPTest"},

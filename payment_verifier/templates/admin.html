@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <div class="wrap">
+    <div class="wrap" id="app-wrap" style="display: none;">
         <div class="header">
             <div class="logo-block">
                 <img src="/static/assets/images/logo.png" alt="Logo" class="header-logo">
@@ -20,6 +20,10 @@
                 </div>
             </div>
             <div class="meta">
+                <button class="btn btn-sm" onclick="logout()" title="Logout" style="margin-right: 1rem;">
+                    <img src="/static/assets/icons/user.svg" class="svg-icon" width="13" height="13" alt="">
+                    Logout
+                </button>
                 <div class="meta-item">
                     <img src="/static/assets/icons/activity.svg" class="meta-icon svg-icon" width="14" height="14"
                         alt="">
@@ -259,6 +263,26 @@
     </div>
 
     <div class="toast-container" id="toasts"></div>
+
+    <div class="modal-overlay active" id="login-overlay" style="display: flex !important;">
+        <div class="modal" style="max-width: 400px;">
+            <h2>Login Required</h2>
+            <p style="color: var(--muted); margin-bottom: 1.5rem;">Please login to access the admin dashboard</p>
+            <form onsubmit="handleLogin(event)">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" placeholder="admin@example.com" required autocomplete="email">
+
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+
+                <div id="login-error" style="display: none; color: var(--unpaid); margin: 1rem 0; padding: 0.75rem; background: var(--unpaid-bg); border: 1px solid var(--unpaid); border-radius: 6px;"></div>
+
+                <div class="modal-actions" style="margin-top: 1.5rem;">
+                    <button type="submit" class="btn" style="width: 100%;">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="/static/assets/js/admin.js?v={{ version }}"></script>
 </body>

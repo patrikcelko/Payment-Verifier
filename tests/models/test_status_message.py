@@ -17,6 +17,7 @@ from payment_verifier.database.models.status_message import (
     reset_status_messages,
     upsert_status_message,
 )
+from payment_verifier.database.models.user import User
 
 
 async def test_upsert_creates_new(session: AsyncSession) -> None:
@@ -95,10 +96,10 @@ async def test_message_unknown_status_fallback(session: AsyncSession) -> None:
     assert msg == "Payment Required"
 
 
-async def test_message_cascade_project_over_global(session: AsyncSession) -> None:
+async def test_message_cascade_project_over_global(session: AsyncSession, user: User) -> None:
     """Test message cascade: project-specific > global > default"""
 
-    project = await create_project(session, name="Cascade")
+    project = await create_project(session, user_id=user.id, name="Cascade")
 
     # No messages -> default
     msg = await get_message_for_status(session, "UNPAID", project_id=project.id)
@@ -120,10 +121,10 @@ async def test_message_cascade_project_over_global(session: AsyncSession) -> Non
     assert msg == "Project custom"
 
 
-async def test_upsert_project_message(session: AsyncSession) -> None:
+async def test_upsert_project_message(session: AsyncSession, user: User) -> None:
     """Test creating a project-specific status message"""
 
-    project = await create_project(session, name="MsgProject")
+    project = await create_project(session, user_id=user.id, name="MsgProject")
     row = await upsert_status_message(
         session,
         status="UNPAID",
@@ -134,10 +135,10 @@ async def test_upsert_project_message(session: AsyncSession) -> None:
     assert row.message == "Project-specific"
 
 
-async def test_list_project_messages_excludes_global(session: AsyncSession) -> None:
+async def test_list_project_messages_excludes_global(session: AsyncSession, user: User) -> None:
     """Test listing project messages excludes global messages"""
 
-    project = await create_project(session, name="ListMsgs")
+    project = await create_project(session, user_id=user.id, name="ListMsgs")
     await upsert_status_message(session, status="UNPAID", message="Global")
     await upsert_status_message(session, status="UNPAID", message="Proj", project_id=project.id)
     rows = await list_project_messages(session, project.id)
@@ -145,10 +146,10 @@ async def test_list_project_messages_excludes_global(session: AsyncSession) -> N
     assert rows[0].message == "Proj"
 
 
-async def test_delete_project_message(session: AsyncSession) -> None:
+async def test_delete_project_message(session: AsyncSession, user: User) -> None:
     """Test deleting a project-specific message"""
 
-    project = await create_project(session, name="DelMsg")
+    project = await create_project(session, user_id=user.id, name="DelMsg")
     await upsert_status_message(
         session,
         status="OVERDUE",
@@ -162,17 +163,17 @@ async def test_delete_project_message(session: AsyncSession) -> None:
     assert msg == DEFAULT_MESSAGES["OVERDUE"]
 
 
-async def test_delete_project_message_not_found(session: AsyncSession) -> None:
+async def test_delete_project_message_not_found(session: AsyncSession, user: User) -> None:
     """Test deleting a non-existent project message returns False"""
 
-    project = await create_project(session, name="DelNotFound")
+    project = await create_project(session, user_id=user.id, name="DelNotFound")
     assert await delete_project_message(session, project_id=project.id, status="UNPAID") is False
 
 
-async def test_reset_project_messages(session: AsyncSession) -> None:
+async def test_reset_project_messages(session: AsyncSession, user: User) -> None:
     """Test resetting all project-specific messages"""
 
-    project = await create_project(session, name="ResetProj")
+    project = await create_project(session, user_id=user.id, name="ResetProj")
     await upsert_status_message(session, status="UNPAID", message="A", project_id=project.id)
     await upsert_status_message(session, status="OVERDUE", message="B", project_id=project.id)
     await reset_project_messages(session, project.id)

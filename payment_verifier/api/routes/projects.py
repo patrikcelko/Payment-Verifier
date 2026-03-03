@@ -2,10 +2,11 @@
 Project management
 ==================
 """
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from payment_verifier.api.dependencies import DBSession
+from payment_verifier.api.dependencies import DBSession, get_current_user
 from payment_verifier.api.schemas.common import MessageResponse
 from payment_verifier.api.schemas.project import (
     NoteCreate,
@@ -27,7 +28,7 @@ from payment_verifier.database.models.project import (
     delete_project,
     get_project_by_id,
     get_project_by_name,
-    list_projects,
+    list_projects_by_user,
     update_project,
     update_project_status,
 )
@@ -46,6 +47,7 @@ from payment_verifier.database.models.status_message import (
     reset_status_messages,
     upsert_status_message,
 )
+from payment_verifier.database.models.user import User
 
 router = APIRouter()
 
@@ -56,10 +58,13 @@ router = APIRouter()
     summary="List all projects",
     tags=["projects"],
 )
-async def api_list_projects(session: DBSession) -> ProjectListResponse:
-    """Return every registered project."""
+async def api_list_projects(
+    session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
+) -> ProjectListResponse:
+    """Return projects for the authenticated user."""
 
-    rows = await list_projects(session)
+    rows = await list_projects_by_user(session, user.id)
     return ProjectListResponse(
         count=len(rows),
         projects=[ProjectResponse.model_validate(r) for r in rows],
@@ -75,11 +80,12 @@ async def api_list_projects(session: DBSession) -> ProjectListResponse:
 async def api_get_project(
     project_id: int,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectResponse:
-    """Return a single project."""
+    """Return a single project if owned by the authenticated user."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
     return ProjectResponse.model_validate(row)
 
@@ -94,6 +100,7 @@ async def api_get_project(
 async def api_create_project(
     body: ProjectCreate,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectResponse:
     """Register a new project in the payment registry."""
 
@@ -103,6 +110,7 @@ async def api_create_project(
 
     row = await create_project(
         session,
+        user_id=user.id,
         name=body.name,
         status=body.status,
         customer_name=body.customer_name,
@@ -125,11 +133,12 @@ async def api_update_status(
     project_id: int,
     body: ProjectStatusUpdate,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectResponse:
-    """Change the payment status of an existing project."""
+    """Change the payment status of a project if owned by the authenticated user."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     updated = await update_project_status(session, row, body.status)
@@ -146,11 +155,12 @@ async def api_update_project(
     project_id: int,
     body: ProjectUpdate,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectResponse:
     """Update customer info, contact details, and project URL."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     updated = await update_project(
@@ -176,11 +186,12 @@ async def api_update_project(
 async def api_delete_project(
     project_id: int,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> MessageResponse:
     """Remove a project from the registry."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
     await delete_project(session, row)
 

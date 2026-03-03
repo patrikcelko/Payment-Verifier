@@ -4,8 +4,9 @@ Project model
 """
 
 import datetime
+import secrets
 
-from sqlalchemy import DateTime, String, Text, func, select
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,8 +27,14 @@ class Project(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the project."""
 
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    """Foreign key to the user who owns this project."""
+
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     """The name of the project, unique and required."""
+
+    api_token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    """Unique API token for project verification (generated hash)."""
 
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="OK")
     """The current status of the project."""
@@ -85,10 +92,28 @@ async def get_project_by_name(session: AsyncSession, name: str) -> Project | Non
     return result.scalar_one_or_none()
 
 
+async def get_project_by_api_token(session: AsyncSession, token: str) -> Project | None:
+    """Return a project by its API token, or ``None``."""
+
+    stmt = select(Project).where(Project.api_token == token)
+    result = await session.execute(stmt)
+
+    return result.scalar_one_or_none()
+
+
 async def get_project_by_id(session: AsyncSession, project_id: int) -> Project | None:
     """Return a project by primary key, or ``None``."""
 
     return await session.get(Project, project_id)
+
+
+async def list_projects_by_user(session: AsyncSession, user_id: int) -> list[Project]:
+    """Return all projects for a specific user ordered by name."""
+
+    stmt = select(Project).where(Project.user_id == user_id).order_by(Project.name)
+    result = await session.execute(stmt)
+
+    return list(result.scalars().all())
 
 
 async def list_projects(session: AsyncSession) -> list[Project]:
@@ -103,6 +128,7 @@ async def list_projects(session: AsyncSession) -> list[Project]:
 async def create_project(
     session: AsyncSession,
     *,
+    user_id: int,
     name: str,
     status: str = "OK",
     customer_name: str | None = None,
@@ -114,8 +140,12 @@ async def create_project(
 ) -> Project:
     """Insert a new project and return it."""
 
+    api_token = secrets.token_urlsafe(48)
+
     project = Project(
+        user_id=user_id,
         name=name,
+        api_token=api_token,
         status=status,
         customer_name=customer_name,
         customer_address=customer_address,

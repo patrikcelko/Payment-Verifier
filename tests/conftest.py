@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import (
 
 from payment_verifier.database.connection import get_session
 from payment_verifier.database.models import Base
+from payment_verifier.database.models.user import User, create_user
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -67,3 +68,16 @@ async def session() -> AsyncGenerator[AsyncSession]:
 
     async with TestSessionFactory() as s:
         yield s
+
+
+@pytest.fixture()
+async def user(session: AsyncSession) -> User:
+    """Create a test user in the database."""
+
+    test_hash = "$2b$12$NQY50zgbyQwDEK33aumVDu7EL9YU9xT6omVMmeHJJ8V7O4lRVKqDy"
+
+    return await create_user(
+        session,
+        email='test@example.com',
+        password_hash=test_hash,
+    )

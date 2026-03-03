@@ -8,6 +8,7 @@ from payment_verifier.database.models.project import Project
 from payment_verifier.database.models.project_note import ProjectNote
 from payment_verifier.database.models.request_log import RequestLog
 from payment_verifier.database.models.status_message import StatusMessage
+from payment_verifier.database.models.user import User
 
 __all__ = [
     "Base",
@@ -15,4 +16,5 @@ __all__ = [
     "ProjectNote",
     "RequestLog",
     "StatusMessage",
+    "User",
 ]

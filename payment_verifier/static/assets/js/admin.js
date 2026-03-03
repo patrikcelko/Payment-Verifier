@@ -3,8 +3,70 @@
 const API = "/api/projects";
 const LOGS_API = "/api/logs";
 const STATS_API = "/api/logs/stats";
+const AUTH_API = "/auth";
 const STATUSES = ["OK", "UNPAID", "PENDING", "OVERDUE", "PARTIAL", "SUSPENDED"];
 let allProjects = [];
+
+function getToken() {
+    return localStorage.getItem("auth_token");
+}
+
+function setToken(token) {
+    localStorage.setItem("auth_token", token);
+}
+
+function clearToken() {
+    localStorage.removeItem("auth_token");
+}
+
+function isAuthenticated() {
+    return !!getToken();
+}
+
+async function authFetch(url, options = {}) {
+    const token = getToken();
+    if (!token) {
+        showLoginModal();
+        throw new Error("Not authenticated");
+    }
+
+    const headers = options.headers || {};
+    headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401) {
+        clearToken();
+        showLoginModal();
+        throw new Error("Authentication failed");
+    }
+
+    return response;
+}
+
+async function login(email, password) {
+    const r = await fetch(`${AUTH_API}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    });
+
+    if (!r.ok) {
+        const data = await r.json();
+        throw new Error(data.detail || "Login failed");
+    }
+
+    const data = await r.json();
+    setToken(data.access_token);
+    return data;
+}
+
+function logout() {
+    clearToken();
+    allProjects = [];
+    document.getElementById("app-wrap").style.display = "none";
+    showLoginModal();
+}
 
 function toast(msg, type = "success") {
     const c = document.getElementById("toasts");
@@ -49,7 +111,7 @@ function icon(name, w = 13, h = 13, cls = "") {
 
 async function fetchProjects() {
     try {
-        const r = await fetch(API);
+        const r = await authFetch(API);
         const data = await r.json();
         allProjects = data.projects || [];
         render();
@@ -57,7 +119,7 @@ async function fetchProjects() {
 }
 
 async function createProject(name, status) {
-    const r = await fetch(API, {
+    const r = await authFetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, status })
@@ -68,7 +130,7 @@ async function createProject(name, status) {
 }
 
 async function updateStatus(id, status) {
-    const r = await fetch(`${API}/${id}/status`, {
+    const r = await authFetch(`${API}/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -80,14 +142,14 @@ async function updateStatus(id, status) {
 
 async function deleteProject(id, name) {
     if (!confirm(`Delete project "${name}"?`)) return;
-    const r = await fetch(`${API}/${id}`, { method: "DELETE" });
+    const r = await authFetch(`${API}/${id}`, { method: "DELETE" });
     if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Error"); }
     toast(`Project "${name}" deleted`);
     await fetchProjects();
 }
 
 async function updateProjectDetails(id, body) {
-    const r = await fetch(`${API}/${id}`, {
+    const r = await authFetch(`${API}/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
@@ -395,7 +457,7 @@ document.getElementById("logs-search-input").addEventListener("input", e => {
 
 async function fetchLogStats() {
     try {
-        const r = await fetch(STATS_API);
+        const r = await authFetch(STATS_API);
         const s = await r.json();
         const t = s.total || 0;
         const s200 = s["200"] || 0, s402 = s["402"] || 0, s404 = s["404"] || 0;
@@ -422,7 +484,7 @@ async function fetchLogs() {
         let url = `${LOGS_API}?limit=${LOGS_PER_PAGE}&offset=${offset}`;
         if (logsFilterStatus !== null) url += `&status_code=${logsFilterStatus}`;
         if (logsFilterProject) url += `&project_name=${encodeURIComponent(logsFilterProject)}`;
-        const r = await fetch(url);
+        const r = await authFetch(url);
         const data = await r.json();
         logsTotalCount = data.total || 0;
         renderLogs(data.logs || []);
@@ -481,7 +543,7 @@ function exportCSV() {
     let url = `${LOGS_API}?limit=10000&offset=0`;
     if (logsFilterStatus !== null) url += `&status_code=${logsFilterStatus}`;
     if (logsFilterProject) url += `&project_name=${encodeURIComponent(logsFilterProject)}`;
-    fetch(url).then(r => r.json()).then(data => {
+    authFetch(url).then(r => r.json()).then(data => {
         const rows = [["Time", "Project", "Status Code", "Response", "Client IP"]];
         (data.logs || []).forEach(l => {
             rows.push([l.created_at, l.project_name, l.status_code, l.response_text, l.client_ip]);
@@ -510,7 +572,7 @@ async function loadGlobalMessages() {
     const list = document.getElementById("me-global-list");
     list.innerHTML = `<p style="color:var(--muted);text-align:center">Loading…</p>`;
     try {
-        const r = await fetch(MSG_API);
+        const r = await authFetch(MSG_API);
         const data = await r.json();
         list.innerHTML = (data.messages || []).map(m => `
             <div class="me-item">
@@ -532,7 +594,7 @@ async function saveGlobalMessage(status) {
     const msg = document.getElementById(`gmsg-${status}`).value.trim();
     if (!msg) { toast("Message cannot be empty", "error"); return; }
     try {
-        const r = await fetch(`${MSG_API}/${status}`, {
+        const r = await authFetch(`${MSG_API}/${status}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: msg })
@@ -545,7 +607,7 @@ async function saveGlobalMessage(status) {
 async function resetAllGlobalMessages() {
     if (!confirm("Reset all global messages to defaults?")) return;
     try {
-        const r = await fetch(`${MSG_API}/reset`, { method: "POST" });
+        const r = await authFetch(`${MSG_API}/reset`, { method: "POST" });
         if (!r.ok) throw new Error("Failed");
         toast("All messages reset to defaults");
         loadGlobalMessages();
@@ -570,7 +632,7 @@ async function loadProjectMessages() {
     const list = document.getElementById("me-project-list");
     list.innerHTML = `<p style="color:var(--muted);text-align:center">Loading…</p>`;
     try {
-        const r = await fetch(`${API}/${pmsgProjectId}/messages`);
+        const r = await authFetch(`${API}/${pmsgProjectId}/messages`);
         const data = await r.json();
         list.innerHTML = (data.messages || []).map(m => `
             <div class="me-item">
@@ -595,7 +657,7 @@ async function saveProjectMessage(status) {
     const msg = document.getElementById(`pmsg-${status}`).value.trim();
     if (!msg) { toast("Message cannot be empty", "error"); return; }
     try {
-        const r = await fetch(`${API}/${pmsgProjectId}/messages/${status}`, {
+        const r = await authFetch(`${API}/${pmsgProjectId}/messages/${status}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: msg })
@@ -609,7 +671,7 @@ async function saveProjectMessage(status) {
 async function removeProjectMessage(status) {
     if (!pmsgProjectId) return;
     try {
-        const r = await fetch(`${API}/${pmsgProjectId}/messages/${status}`, { method: "DELETE" });
+        const r = await authFetch(`${API}/${pmsgProjectId}/messages/${status}`, { method: "DELETE" });
         if (!r.ok) throw new Error("Failed");
         toast(`Custom override for ${status} removed`);
         loadProjectMessages();
@@ -620,7 +682,7 @@ async function resetAllProjectMessages() {
     if (!pmsgProjectId) return;
     if (!confirm("Remove all custom message overrides for this project?")) return;
     try {
-        const r = await fetch(`${API}/${pmsgProjectId}/messages/reset`, { method: "POST" });
+        const r = await authFetch(`${API}/${pmsgProjectId}/messages/reset`, { method: "POST" });
         if (!r.ok) throw new Error("Failed");
         toast("All project overrides removed");
         loadProjectMessages();
@@ -629,7 +691,7 @@ async function resetAllProjectMessages() {
 
 document.addEventListener("keydown", e => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
-    if (e.key === "Escape") { closeModal(); closeGlobalMsgEditor(); closeProjectMsgEditor(); }
+    if (e.key === "Escape") { closeModal(); closeGlobalMsgEditor(); closeProjectMsgEditor(); closeLoginModal(); }
     if (e.key === "n" || e.key === "N") { e.preventDefault(); openCreateModal(); }
     if (e.key === "m" || e.key === "M") { e.preventDefault(); openGlobalMsgEditor(); }
     if (e.key === "1") switchTab("projects");
@@ -637,5 +699,68 @@ document.addEventListener("keydown", e => {
     if (e.key === "r" || e.key === "R") { e.preventDefault(); fetchProjects(); fetchLogStats(); }
 });
 
-fetchProjects();
-fetchLogStats();
+function showLoginModal() {
+    document.getElementById("login-overlay").classList.add("active");
+    document.getElementById("login-overlay").style.display = "flex";
+    document.getElementById("app-wrap").style.display = "none";
+    document.getElementById("login-email").focus();
+}
+
+function closeLoginModal() {
+    document.getElementById("login-overlay").classList.remove("active");
+    document.getElementById("login-overlay").style.display = "none";
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const btn = e.target.querySelector("button[type=submit]");
+    const error = document.getElementById("login-error");
+
+    error.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Logging in...";
+
+    try {
+        await login(email, password);
+        closeLoginModal();
+        document.getElementById("app-wrap").style.display = "block";
+        initApp();
+    } catch (err) {
+        error.textContent = err.message || "Login failed";
+        error.style.display = "block";
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Login";
+    }
+}
+
+function initApp() {
+    const wrap = document.getElementById("app-wrap");
+    const loginOverlay = document.getElementById("login-overlay");
+
+    if (!isAuthenticated()) {
+        // Not authenticated - show login, hide app
+        wrap.style.display = "none";
+        loginOverlay.classList.add("active");
+        loginOverlay.style.display = "flex";
+        return;
+    }
+
+    // Authenticated - hide login, show app
+    wrap.style.display = "block";
+    loginOverlay.classList.remove("active");
+    loginOverlay.style.display = "none";
+
+    // Load app data
+    fetchProjects();
+    fetchLogStats();
+}
+
+// Initialize on DOMContentLoaded or immediately if DOM is already loaded
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}

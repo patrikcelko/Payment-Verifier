@@ -7,15 +7,17 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from payment_verifier.database.models.project import create_project
+from payment_verifier.database.models.user import User
 
 
 async def test_list_returns_all_four_statuses(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test listing project messages returns all four blocking statuses"""
 
-    proj = await create_project(session, name="ProjMsgs")
+    proj = await create_project(session, user_id=user.id, name="ProjMsgs")
     resp = await client.get(f"/api/projects/{proj.id}/messages")
     assert resp.status_code == 200
     data = resp.json()
@@ -27,10 +29,11 @@ async def test_list_returns_all_four_statuses(
 async def test_set_project_message(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test setting custom message for project status"""
 
-    proj = await create_project(session, name="SetProjMsg")
+    proj = await create_project(session, user_id=user.id, name="SetProjMsg")
     resp = await client.put(
         f"/api/projects/{proj.id}/messages/UNPAID",
         json={"message": "Custom per-project"},
@@ -47,10 +50,11 @@ async def test_set_project_message(
 async def test_delete_project_message(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test deleting project-specific message reverts to global message"""
 
-    proj = await create_project(session, name="DelProjMsg")
+    proj = await create_project(session, user_id=user.id, name="DelProjMsg")
     await client.put(
         f"/api/projects/{proj.id}/messages/OVERDUE",
         json={"message": "Custom"},
@@ -66,10 +70,11 @@ async def test_delete_project_message(
 async def test_delete_nonexistent_message_returns_404(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test deleting non-existent project message returns HTTP 404"""
 
-    proj = await create_project(session, name="DelNotFound2")
+    proj = await create_project(session, user_id=user.id, name="DelNotFound2")
     resp = await client.delete(f"/api/projects/{proj.id}/messages/UNPAID")
     assert resp.status_code == 404
 
@@ -77,10 +82,11 @@ async def test_delete_nonexistent_message_returns_404(
 async def test_reset_project_messages(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test resetting project messages removes all custom messages"""
 
-    proj = await create_project(session, name="ResetProjMsgs")
+    proj = await create_project(session, user_id=user.id, name="ResetProjMsgs")
     await client.put(f"/api/projects/{proj.id}/messages/UNPAID", json={"message": "A"})
     await client.put(f"/api/projects/{proj.id}/messages/OVERDUE", json={"message": "B"})
     resp = await client.post(f"/api/projects/{proj.id}/messages/reset")
@@ -110,10 +116,11 @@ async def test_set_message_nonexistent_project_returns_404(client: AsyncClient) 
 async def test_set_message_invalid_status_returns_404(
     client: AsyncClient,
     session: AsyncSession,
+    user: User,
 ) -> None:
     """Test setting message for invalid status returns HTTP 404"""
 
-    proj = await create_project(session, name="BadStatus")
+    proj = await create_project(session, user_id=user.id, name="BadStatus")
     resp = await client.put(
         f"/api/projects/{proj.id}/messages/INVALID",
         json={"message": "X"},
