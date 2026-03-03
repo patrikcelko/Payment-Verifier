@@ -67,6 +67,7 @@ async def register(
         user=UserResponse.model_validate(user),
     )
 
+
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(RATE_LIMIT_AUTH)
 async def login(

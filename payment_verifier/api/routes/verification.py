@@ -75,7 +75,7 @@ async def check(
             text = "Project name or API token is required"
             await create_request_log(
                 session,
-                project_name='unknown!',
+                project_name="unknown!",
                 status_code=400,
                 response_text=text,
                 client_ip=_client_ip(request),
@@ -89,7 +89,7 @@ async def check(
         text = "Project not found"
         await create_request_log(
             session,
-            project_name=lookup_identifier or 'unknown!',
+            project_name=lookup_identifier or "unknown!",
             status_code=404,
             response_text=text,
             client_ip=_client_ip(request),

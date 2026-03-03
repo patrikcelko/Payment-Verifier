@@ -63,16 +63,13 @@ def _apply_log_filters(
     from payment_verifier.database.models.project import Project
 
     if user_id is not None:
-        stmt = (
-            stmt.join(
-                Project,
-                RequestLog.project_name == Project.name,
-                isouter=True,
-            )
-            .where(
-                and_(
-                    (Project.user_id == user_id) | (Project.id.is_(None)),
-                )
+        stmt = stmt.join(
+            Project,
+            RequestLog.project_name == Project.name,
+            isouter=True,
+        ).where(
+            and_(
+                (Project.user_id == user_id) | (Project.id.is_(None)),
             )
         )
 
@@ -121,9 +118,7 @@ async def list_request_logs(
     only returns logs from that users projects or 404s.
     """
 
-    stmt = _apply_log_filters(
-        select(RequestLog), user_id=user_id, status_code=status_code, project_name=project_name
-    )
+    stmt = _apply_log_filters(select(RequestLog), user_id=user_id, status_code=status_code, project_name=project_name)
     stmt = stmt.order_by(RequestLog.created_at.desc(), RequestLog.id.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
 
@@ -159,16 +154,13 @@ async def get_log_stats(session: AsyncSession, user_id: int | None = None) -> di
 
     stmt = select(RequestLog.status_code, func.count(RequestLog.id))
     if user_id is not None:
-        stmt = (
-            stmt.join(
-                Project,
-                RequestLog.project_name == Project.name,
-                isouter=True,
-            )
-            .where(
-                and_(
-                    (Project.user_id == user_id) | (Project.id.is_(None)),
-                )
+        stmt = stmt.join(
+            Project,
+            RequestLog.project_name == Project.name,
+            isouter=True,
+        ).where(
+            and_(
+                (Project.user_id == user_id) | (Project.id.is_(None)),
             )
         )
 

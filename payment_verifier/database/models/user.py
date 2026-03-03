@@ -20,8 +20,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     """Primary key for the user."""
 
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     """Email address, unique and required."""
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)

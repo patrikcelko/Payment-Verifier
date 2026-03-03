@@ -10,10 +10,10 @@ from payment_verifier.database.models.project import create_project
 from payment_verifier.database.models.user import User
 
 
-async def test_logs_empty(client: AsyncClient) -> None:
+async def test_logs_empty(auth_client: AsyncClient) -> None:
     """Test listing logs returns empty array when no logs exist"""
 
-    resp = await client.get("/api/logs")
+    resp = await auth_client.get("/api/logs")
     assert resp.status_code == 200
     data = resp.json()
     assert data["count"] == 0
@@ -21,73 +21,73 @@ async def test_logs_empty(client: AsyncClient) -> None:
     assert data["logs"] == []
 
 
-async def test_logs_returns_entries(client: AsyncClient, session: AsyncSession, user: User) -> None:
+async def test_logs_returns_entries(auth_client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test logs endpoint returns request log entries"""
 
     await create_project(session, user_id=user.id, name="LogApiTest", status="OK")
-    await client.get("/", params={"project": "LogApiTest"})
-    resp = await client.get("/api/logs")
+    await auth_client.get("/", params={"project": "LogApiTest"})
+    resp = await auth_client.get("/api/logs")
     data = resp.json()
     assert data["total"] >= 1
     assert data["logs"][0]["project_name"] == "LogApiTest"
 
 
-async def test_logs_pagination(client: AsyncClient, session: AsyncSession, user: User) -> None:
+async def test_logs_pagination(auth_client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test logs pagination with limit and offset parameters"""
 
     await create_project(session, user_id=user.id, name="PagTest", status="OK")
     for _ in range(5):
-        await client.get("/", params={"project": "PagTest"})
-    resp = await client.get("/api/logs", params={"limit": 2, "offset": 0})
+        await auth_client.get("/", params={"project": "PagTest"})
+    resp = await auth_client.get("/api/logs", params={"limit": 2, "offset": 0})
     data = resp.json()
     assert data["count"] == 2
     assert data["total"] == 5
 
 
-async def test_filter_by_status_code(client: AsyncClient, session: AsyncSession, user: User) -> None:
+async def test_filter_by_status_code(auth_client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test filtering logs by HTTP status code"""
 
     await create_project(session, user_id=user.id, name="FilterTest", status="OK")
-    await client.get("/", params={"project": "FilterTest"})
-    await client.get("/", params={"project": "NoSuchProject"})
-    resp = await client.get("/api/logs", params={"status_code": 200})
+    await auth_client.get("/", params={"project": "FilterTest"})
+    await auth_client.get("/", params={"project": "NoSuchProject"})
+    resp = await auth_client.get("/api/logs", params={"status_code": 200})
     data = resp.json()
     assert all(entry["status_code"] == 200 for entry in data["logs"])
 
 
-async def test_filter_by_project_name(client: AsyncClient, session: AsyncSession, user: User) -> None:
+async def test_filter_by_project_name(auth_client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test filtering logs by project name"""
 
     await create_project(session, user_id=user.id, name="SearchMe", status="OK")
-    await client.get("/", params={"project": "SearchMe"})
-    await client.get("/", params={"project": "Other"})
-    resp = await client.get("/api/logs", params={"project_name": "SearchMe"})
+    await auth_client.get("/", params={"project": "SearchMe"})
+    await auth_client.get("/", params={"project": "Other"})
+    resp = await auth_client.get("/api/logs", params={"project_name": "SearchMe"})
     data = resp.json()
     assert all("SearchMe" in entry["project_name"] for entry in data["logs"])
 
 
-async def test_combined_filters(client: AsyncClient, session: AsyncSession, user: User) -> None:
+async def test_combined_filters(auth_client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test combining multiple filter parameters"""
 
     await create_project(session, user_id=user.id, name="Combo-OK", status="OK")
     await create_project(session, user_id=user.id, name="Combo-Unpaid", status="UNPAID")
-    await client.get("/", params={"project": "Combo-OK"})
-    await client.get("/", params={"project": "Combo-Unpaid"})
-    await client.get("/", params={"project": "Ghost"})
+    await auth_client.get("/", params={"project": "Combo-OK"})
+    await auth_client.get("/", params={"project": "Combo-Unpaid"})
+    await auth_client.get("/", params={"project": "Ghost"})
 
-    resp = await client.get("/api/logs", params={"status_code": 200, "project_name": "Combo"})
+    resp = await auth_client.get("/api/logs", params={"status_code": 200, "project_name": "Combo"})
     data = resp.json()
     assert data["total"] == 1
     assert data["logs"][0]["project_name"] == "Combo-OK"
 
 
-async def test_stats_endpoint(client: AsyncClient, session: AsyncSession, user: User) -> None:
+async def test_stats_endpoint(auth_client: AsyncClient, session: AsyncSession, user: User) -> None:
     """Test stats endpoint returns aggregated status code counts"""
 
     await create_project(session, user_id=user.id, name="StatsTest", status="OK")
-    await client.get("/", params={"project": "StatsTest"})
-    await client.get("/", params={"project": "Ghost"})
-    resp = await client.get("/api/logs/stats")
+    await auth_client.get("/", params={"project": "StatsTest"})
+    await auth_client.get("/", params={"project": "Ghost"})
+    resp = await auth_client.get("/api/logs/stats")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 2

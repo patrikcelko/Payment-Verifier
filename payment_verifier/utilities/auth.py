@@ -29,7 +29,7 @@ def _get_secret_key() -> str:
     if not secret_key:
         raise RuntimeError(
             "SECRET_KEY environment variable must be set. "
-            "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
         )
 
     _secret_key_cache = secret_key
@@ -39,17 +39,17 @@ def _get_secret_key() -> str:
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
 
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     salt = bcrypt.gensalt(rounds=12)
     hashed = bcrypt.hashpw(password_bytes, salt)
-    return hashed.decode('utf-8')
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
     """Verify a password against its hash."""
 
-    password_bytes = plain_password.encode('utf-8')
-    hash_bytes = password_hash.encode('utf-8')
+    password_bytes = plain_password.encode("utf-8")
+    hash_bytes = password_hash.encode("utf-8")
     return bcrypt.checkpw(password_bytes, hash_bytes)
 
 

@@ -83,7 +83,35 @@ async def user(session: AsyncSession) -> User:
 
     return await create_user(
         session,
-        email='test@example.com',
-        name='Test User',
+        email="test@example.com",
+        name="Test User",
         password_hash=test_hash,
     )
+
+
+@pytest.fixture()
+async def auth_token(user: User) -> str:
+    """Create a JWT authentication token for the test user."""
+
+    from payment_verifier.utilities.auth import create_access_token
+
+    return create_access_token(user.id)
+
+
+@pytest.fixture()
+async def auth_client(user: User, auth_token: str) -> AsyncGenerator[AsyncClient]:
+    """Async HTTP client with authentication headers."""
+
+    from payment_verifier import app
+
+    app.dependency_overrides[get_session] = _override_get_session
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()

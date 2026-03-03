@@ -206,11 +206,7 @@ def test_bcrypt_hash_format() -> None:
     password = "TestPassword123"  # noqa
     hashed = hash_password(password)
 
-    assert (
-        hashed.startswith("$2b$") or
-        hashed.startswith("$2a$") or
-        hashed.startswith("$2y$")
-    )
+    assert hashed.startswith("$2b$") or hashed.startswith("$2a$") or hashed.startswith("$2y$")
     # Should have proper length (60 characters for bcrypt)
     assert len(hashed) == 60
 

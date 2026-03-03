@@ -23,10 +23,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("email", sa.String(length=255), nullable=False),
         sa.Column("password_hash", sa.String(length=255), nullable=False),
-        sa.Column(
-            "is_active", sa.Boolean(), nullable=False,
-            server_default=sa.true()
-        ),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -44,29 +41,15 @@ def upgrade() -> None:
         sa.UniqueConstraint("email"),
     )
     op.create_index("ix_users_email", "users", ["email"], unique=True)
-    op.add_column("projects", sa.Column(
-        "user_id", sa.Integer(), nullable=True
-    ))
-    op.add_column(
-        "projects", sa.Column(
-            "api_token", sa.String(length=64), nullable=True, unique=True
-        )
-    )
+    op.add_column("projects", sa.Column("user_id", sa.Integer(), nullable=True))
+    op.add_column("projects", sa.Column("api_token", sa.String(length=64), nullable=True, unique=True))
 
-    op.alter_column(
-        "projects", "user_id", existing_type=sa.Integer(), nullable=False
-    )
-    op.alter_column(
-        "projects", "api_token", existing_type=sa.String(64), nullable=False
-    )
+    op.alter_column("projects", "user_id", existing_type=sa.Integer(), nullable=False)
+    op.alter_column("projects", "api_token", existing_type=sa.String(64), nullable=False)
 
-    op.create_foreign_key(
-        "fk_projects_user_id", "projects", "users", ["user_id"], ["id"]
-    )
+    op.create_foreign_key("fk_projects_user_id", "projects", "users", ["user_id"], ["id"])
     op.create_index("ix_projects_user_id", "projects", ["user_id"])
-    op.create_index(
-        "ix_projects_api_token", "projects", ["api_token"], unique=True
-    )
+    op.create_index("ix_projects_api_token", "projects", ["api_token"], unique=True)
 
 
 def downgrade() -> None:
