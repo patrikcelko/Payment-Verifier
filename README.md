@@ -20,26 +20,26 @@ This system **automatically blocks project access when payments are overdue**, t
 Payment Verifier includes helper scripts for building, deploying, and managing the service:
 
 ```bash
-# help - Display help message
+# Display help message
 ./payment-verifier help
 
-# build - Build the Docker image and push it to the registry
-./control/build.sh
+# Build the Docker image and push it to the registry
+./payment-verifier build
 
-# deploy - Deploy Payment Verifier to a remote server
-./control/deploy.sh
+# Deploy Payment Verifier to a remote server
+./payment-verifier deploy
 
-# start-docker - Start already built container (preferred method)
-docker compose up -d
+# Start already built container (preferred method)
+./payment-verifier start-docker
 
-# rebuild-docker - Force rebuild with docker compose
-docker compose up -d --build
+# Force rebuild with docker compose
+./payment-verifier rebuild-docker
 
-# kill-docker - Forcefully kill all running docker containers
-docker compose down
+# Forcefully kill all running docker containers
+./payment-verifier kill-docker
 
-# enter [name|id] - Enter a running docker container
-docker exec -it <container-name> bash
+# Enter a running docker container
+./payment-verifier enter [name|id]
 ```
 
 ## Integration Examples
@@ -57,14 +57,14 @@ import httpx
 
 app = FastAPI()
 
-PAYMENT_VERIFIER_URL: str = 'http://localhost:8111'
-PROJECT_NAME: str = 'my-project'
+PAYMENT_VERIFIER_URL: str = 'https://payment-verifier.com'
+API_TOKEN: str = 'your-api-token'
 
 async def payment_verification_middleware(request: Request, call_next: Callable) -> Response:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                f'{PAYMENT_VERIFIER_URL}/?project={PROJECT_NAME}'
+                f'{PAYMENT_VERIFIER_URL}/?token={API_TOKEN}'
             )
 
             if response.status_code != 200:
@@ -75,10 +75,8 @@ async def payment_verification_middleware(request: Request, call_next: Callable)
                     }
                 )
         except Exception:
-            return JSONResponse(
-                status_code=503,
-                content={'error': 'Payment verification service unavailable'}
-            )
+            # Service unavailable - allow app to continue normally
+            pass
 
     return await call_next(request)
 
@@ -102,8 +100,8 @@ import axios from 'axios';
 const app = express();
 app.use(express.json());
 
-const PAYMENT_VERIFIER_URL: string = 'http://localhost:8111';
-const PROJECT_NAME: string = 'my-project';
+const PAYMENT_VERIFIER_URL: string = 'https://payment-verifier.com';
+const API_TOKEN: string = 'your-api-token';
 
 const paymentVerificationMiddleware = async (
   req: Request,
@@ -112,7 +110,7 @@ const paymentVerificationMiddleware = async (
 ): Promise<void> => {
   try {
     const response = await axios.get(
-      `${PAYMENT_VERIFIER_URL}/?project=${PROJECT_NAME}`
+      `${PAYMENT_VERIFIER_URL}/?token=${API_TOKEN}`
     );
 
     if (response.status !== 200) {
@@ -125,7 +123,8 @@ const paymentVerificationMiddleware = async (
     if (axios.isAxiosError(error) && error.response) {
       res.status(error.response.status).json(error.response.data);
     } else {
-      res.status(503).json({ error: 'Payment verification service unavailable' });
+      // Service unavailable - allow app to continue normally
+      next();
     }
   }
 };
@@ -159,14 +158,14 @@ use Illuminate\Support\Facades\Http;
 
 class PaymentVerificationMiddleware
 {
-    private string $paymentVerifierUrl = 'http://localhost:8111';
-    private string $projectName = 'my-project';
+    private string $paymentVerifierUrl = 'https://payment-verifier.com';
+    private string $apiToken = 'your-api-token';
 
     public function handle(Request $request, Closure $next): Response
     {
         try {
             $response = Http::get(
-                "{$this->paymentVerifierUrl}/?project={$this->projectName}"
+                "{$this->paymentVerifierUrl}/?token={$this->apiToken}"
             );
 
             if (!$response->successful()) {
@@ -176,10 +175,7 @@ class PaymentVerificationMiddleware
                 );
             }
         } catch (\Exception $e) {
-            return response()->json(
-                ['error' => 'Payment verification service unavailable'],
-                503
-            );
+            // Service unavailable - allow app to continue normally
         }
 
         return $next($request);
@@ -198,6 +194,6 @@ Route::middleware('payment.verify')->group(function () {
 
 ## License
 
-Copyright 2026 Patrik Čelko, see [LICENSE](LICENSE) for details.
+Copyright 2025-2026, created by Patrik Čelko, see [LICENSE](LICENSE) for more details.
 
 ---
