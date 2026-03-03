@@ -24,6 +24,9 @@ class User(Base):
         String(255), unique=True, nullable=False, index=True)
     """Email address, unique and required."""
 
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    """User's display name."""
+
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     """Hashed password using bcrypt."""
 
@@ -46,7 +49,7 @@ class User(Base):
     """Timestamp when the user was last updated."""
 
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, email={self.email!r})>"
+        return f"<User(id={self.id}, email={self.email!r}, name={self.name!r})>"
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
@@ -63,10 +66,10 @@ async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
     return await session.get(User, user_id)
 
 
-async def create_user(session: AsyncSession, *, email: str, password_hash: str) -> User:
+async def create_user(session: AsyncSession, *, email: str, name: str, password_hash: str) -> User:
     """Insert a new user and return it."""
 
-    user = User(email=email, password_hash=password_hash)
+    user = User(email=email, name=name, password_hash=password_hash)
     session.add(user)
     await session.commit()
     await session.refresh(user)

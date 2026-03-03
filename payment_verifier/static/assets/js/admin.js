@@ -26,7 +26,7 @@ function isAuthenticated() {
 async function authFetch(url, options = {}) {
     const token = getToken();
     if (!token) {
-        showLoginModal();
+        showAuthModal();
         throw new Error("Not authenticated");
     }
 
@@ -37,11 +37,21 @@ async function authFetch(url, options = {}) {
 
     if (response.status === 401) {
         clearToken();
-        showLoginModal();
+        showAuthModal();
         throw new Error("Authentication failed");
     }
 
     return response;
+}
+
+// Helper for API calls with automatic error handling
+async function apiCall(url, options = {}) {
+    const r = await authFetch(url, options);
+    if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data.detail || `API Error: ${r.status}`);
+    }
+    return r;
 }
 
 async function login(email, password) {
@@ -61,11 +71,203 @@ async function login(email, password) {
     return data;
 }
 
-function logout() {
+function logout(event) {
+    if (event) event.preventDefault();
     clearToken();
     allProjects = [];
     document.getElementById("app-wrap").style.display = "none";
-    showLoginModal();
+    const authOverlay = document.getElementById("auth-overlay");
+    authOverlay.classList.add("active");
+    authOverlay.style.display = "flex";
+    switchAuthTab('login');
+    closeUserMenu();
+}
+
+function toggleUserMenu(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById("user-menu-dropdown");
+    const menu = event.currentTarget.closest(".user-menu");
+
+    if (dropdown.style.display === "none") {
+        dropdown.style.display = "block";
+        menu.classList.add("open");
+        // Close when clicking outside
+        setTimeout(() => {
+            document.addEventListener("click", closeUserMenuOnClickOutside);
+        }, 0);
+    } else {
+        closeUserMenu();
+    }
+}
+
+function closeUserMenu() {
+    const dropdown = document.getElementById("user-menu-dropdown");
+    const menu = document.querySelector(".user-menu");
+    if (dropdown) dropdown.style.display = "none";
+    if (menu) menu.classList.remove("open");
+    document.removeEventListener("click", closeUserMenuOnClickOutside);
+}
+
+function closeUserMenuOnClickOutside(event) {
+    const menu = document.querySelector(".user-menu");
+    if (menu && !menu.contains(event.target)) {
+        closeUserMenu();
+    }
+}
+
+function openProfileModal(event) {
+    event.preventDefault();
+    closeUserMenu();
+
+    // Get current user email from token
+    const token = getToken();
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            // For now, we'll fetch user info from API
+            authFetch('/auth/me').then(async (res) => {
+                if (res.ok) {
+                    const user = await res.json();
+                    document.getElementById("profile-name").value = user.name || "";
+                    document.getElementById("profile-email").value = user.email;
+                }
+            }).catch(() => {
+                // If endpoint doesn't exist yet, use placeholder
+                document.getElementById("profile-name").value = "";
+                document.getElementById("profile-email").value = "";
+            });
+        } catch (e) {
+            console.error("Error decoding token:", e);
+        }
+    }
+
+    // Clear password fields
+    document.getElementById("profile-current-password").value = "";
+    document.getElementById("profile-new-password").value = "";
+    document.getElementById("profile-confirm-password").value = "";
+    document.getElementById("password-strength").style.display = "none";
+    document.getElementById("password-match-error").style.display = "none";
+
+    const overlay = document.getElementById("profile-overlay");
+    overlay.style.display = "flex";
+    overlay.classList.add("active");
+}
+
+function checkPasswordStrength() {
+    const password = document.getElementById("profile-new-password").value;
+    const validation = validatePasswordStrength(password);
+
+    updateStrengthIndicator("password-strength", "password-strength-text", 4, validation.strength());
+
+    // Update requirement indicators
+    document.getElementById("req-length").className = validation.hasLength ? "met" : "unmet";
+    document.getElementById("req-uppercase").className = validation.hasUppercase ? "met" : "unmet";
+    document.getElementById("req-lowercase").className = validation.hasLowercase ? "met" : "unmet";
+    document.getElementById("req-number").className = validation.hasNumber ? "met" : "unmet";
+
+    // Also check password match
+    checkPasswordMatch();
+}
+
+function checkPasswordMatch() {
+    const newPassword = document.getElementById("profile-new-password").value;
+    const confirmPassword = document.getElementById("profile-confirm-password").value;
+    updatePasswordMatchError("password-match-error", newPassword, confirmPassword);
+}
+
+function checkRegisterPasswordStrength() {
+    const password = document.getElementById("register-password").value;
+    const validation = validatePasswordStrength(password);
+
+    updateStrengthIndicator("register-password-strength", "register-strength-text", 4, validation.strength());
+
+    // Update requirement indicators
+    document.getElementById("register-req-length").className = validation.hasLength ? "met" : "unmet";
+    document.getElementById("register-req-uppercase").className = validation.hasUppercase ? "met" : "unmet";
+    document.getElementById("register-req-lowercase").className = validation.hasLowercase ? "met" : "unmet";
+    document.getElementById("register-req-number").className = validation.hasNumber ? "met" : "unmet";
+
+    // Also check password match
+    checkRegisterPasswordMatch();
+}
+
+function checkRegisterPasswordMatch() {
+    const password = document.getElementById("register-password").value;
+    const confirmPassword = document.getElementById("register-password-confirm").value;
+    updatePasswordMatchError("register-password-match-error", password, confirmPassword);
+}
+
+function closeProfileModal() {
+    const overlay = document.getElementById("profile-overlay");
+    overlay.style.display = "none";
+    overlay.classList.remove("active");
+}
+
+async function handleProfileUpdate(event) {
+    event.preventDefault();
+
+    const name = document.getElementById("profile-name").value.trim();
+    const email = document.getElementById("profile-email").value;
+    const currentPassword = document.getElementById("profile-current-password").value;
+    const newPassword = document.getElementById("profile-new-password").value;
+    const confirmPassword = document.getElementById("profile-confirm-password").value;
+
+    const body = {};
+
+    // Only include name if provided
+    if (name) {
+        body.name = name;
+    }
+
+    // Only include email if changed (we'll get current from server)
+    if (email) {
+        body.email = email;
+    }
+
+    // Only include password change if new password provided
+    if (newPassword) {
+        if (!currentPassword) {
+            toast("Current password required to change password", "error");
+            return;
+        }
+
+        // Validate password strength
+        const validation = validatePasswordStrength(newPassword);
+        if (!validation.isValid()) {
+            toast("Password must be at least 8 characters with uppercase, lowercase, and number", "error");
+            return;
+        }
+
+        // Check password match
+        if (!passwordsMatch(newPassword, confirmPassword)) {
+            toast("Passwords do not match", "error");
+            return;
+        }
+
+        body.current_password = currentPassword;
+        body.new_password = newPassword;
+    }
+
+    try {
+        const res = await authFetch("/auth/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById("user-name").textContent = user.name;
+            document.getElementById("user-email").textContent = user.email;
+            toast("Profile updated successfully");
+            closeProfileModal();
+        } else {
+            const error = await res.json();
+            toast(error.detail || "Failed to update profile", "error");
+        }
+    } catch (err) {
+        toast("Network error", "error");
+    }
 }
 
 function toast(msg, type = "success") {
@@ -75,6 +277,25 @@ function toast(msg, type = "success") {
     el.textContent = msg;
     c.appendChild(el);
     setTimeout(() => el.remove(), 3500);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        toast("Verification link copied to clipboard");
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand("copy");
+            toast("Verification link copied to clipboard");
+        } catch (e) {
+            toast("Failed to copy link", "error");
+        }
+        document.body.removeChild(textArea);
+    });
 }
 
 function formatDate(iso) {
@@ -118,43 +339,40 @@ async function fetchProjects() {
     } catch (e) { toast("Failed to load projects", "error"); }
 }
 
-async function createProject(name, status) {
-    const r = await authFetch(API, {
+async function createProject(name, status, details = {}) {
+    const body = { name, status, ...details };
+    await apiCall(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, status })
+        body: JSON.stringify(body)
     });
-    if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Error"); }
     toast(`Project "${name}" created`);
     await fetchProjects();
 }
 
 async function updateStatus(id, status) {
-    const r = await authFetch(`${API}/${id}/status`, {
+    await apiCall(`${API}/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
     });
-    if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Error"); }
     toast("Status updated");
     await fetchProjects();
 }
 
 async function deleteProject(id, name) {
     if (!confirm(`Delete project "${name}"?`)) return;
-    const r = await authFetch(`${API}/${id}`, { method: "DELETE" });
-    if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Error"); }
+    await apiCall(`${API}/${id}`, { method: "DELETE" });
     toast(`Project "${name}" deleted`);
     await fetchProjects();
 }
 
 async function updateProjectDetails(id, body) {
-    const r = await authFetch(`${API}/${id}`, {
+    await apiCall(`${API}/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
     });
-    if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Error"); }
     toast("Project updated");
     await fetchProjects();
 }
@@ -245,6 +463,9 @@ function render() {
             ["contact_phone", "phone"],
         ]);
 
+        // Generate verification URL using API token
+        const verifyUrl = `${window.location.origin}/?token=${p.api_token}`;
+
         const selectorOpts = STATUSES.map(s => {
             const cls = s === p.status ? "ss-opt active" : "ss-opt";
             return `<div class="${cls}" data-status="${s}" onclick="selectStatus(${p.id},'${s}',this)"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>${s}</div>`;
@@ -258,7 +479,12 @@ function render() {
             </div>
             ${customerHtml}
             ${contactHtml}
-            <div class="project-meta">${buildTimestamps(p)}</div>
+            <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; background: var(--accent-8); border: 1px solid var(--accent-30); border-radius: 0.5rem; overflow: hidden;">
+                <input type="text" value="${esc(verifyUrl)}" readonly style="flex: 1; min-width: 0; padding: 0.75rem 1rem; background: transparent; border: none; color: var(--text); font-family: var(--mono); font-size: 0.75rem; outline: none; cursor: text;" onclick="this.select();">
+                <button onclick="copyToClipboard('${esc(verifyUrl)}')" title="Copy" style="flex-shrink: 0; background: var(--accent); color: #000; border: none; padding: 0.75rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; height: 100%;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
             <div class="project-actions">
                 <div class="status-selector" data-project-id="${p.id}">
                     <button class="ss-trigger status-${p.status.toLowerCase()}" onclick="toggleSelector(this)">
@@ -282,6 +508,7 @@ function render() {
                     ${icon("trash", 14, 14)}
                 </button>
             </div>
+            <div class="project-meta">${buildTimestamps(p)}</div>
         </div>`;
     }).join("");
 }
@@ -302,48 +529,64 @@ async function selectStatus(id, status, optEl) {
     catch (e) { toast(e.message, "error"); }
 }
 
-// Close selector on outside click
 document.addEventListener("click", e => {
     if (!e.target.closest(".status-selector")) {
         document.querySelectorAll(".status-selector.open").forEach(s => s.classList.remove("open"));
     }
 });
 
+const MODAL_FIELD_IDS = {
+    id: "modal-project-id",
+    name: "modal-name",
+    status: "modal-status",
+    customerName: "modal-customer-name",
+    customerAddress: "modal-customer-address",
+    projectUrl: "modal-project-url",
+    contactPerson: "modal-contact-person",
+    contactEmail: "modal-contact-email",
+    contactPhone: "modal-contact-phone"
+};
+
+function getModalElement(key) { return document.getElementById(MODAL_FIELD_IDS[key]); }
+
+function clearModalFields() {
+    Object.keys(MODAL_FIELD_IDS).forEach(key => {
+        if (key !== "id") getModalElement(key).value = "";
+    });
+    getModalElement("id").value = "";
+}
+
+function setModalField(key, value) { getModalElement(key).value = value || ""; }
+
 function openCreateModal() {
+    getModalElement("id").value = "";
+    clearModalFields();
+    getModalElement("name").disabled = false;
+    getModalElement("status").value = "OK";
     document.getElementById("modal-title").textContent = "Add Project";
-    document.getElementById("modal-project-id").value = "";
-    document.getElementById("modal-name").value = "";
-    document.getElementById("modal-name").disabled = false;
-    document.getElementById("modal-status").value = "OK";
-    document.getElementById("modal-customer-name").value = "";
-    document.getElementById("modal-customer-address").value = "";
-    document.getElementById("modal-project-url").value = "";
-    document.getElementById("modal-contact-person").value = "";
-    document.getElementById("modal-contact-email").value = "";
-    document.getElementById("modal-contact-phone").value = "";
     document.getElementById("modal-name-group").style.display = "";
     document.getElementById("modal-status-group").style.display = "";
     document.getElementById("modal-submit").textContent = "Create";
     document.getElementById("modal-overlay").classList.add("active");
-    setTimeout(() => document.getElementById("modal-name").focus(), 100);
+    setTimeout(() => getModalElement("name").focus(), 100);
 }
 
 function openEditModal(id) {
     const p = allProjects.find(x => x.id === id);
     if (!p) return;
+    getModalElement("id").value = id;
+    setModalField("customerName", p.customer_name);
+    setModalField("customerAddress", p.customer_address);
+    setModalField("projectUrl", p.project_url);
+    setModalField("contactPerson", p.contact_person);
+    setModalField("contactEmail", p.contact_email);
+    setModalField("contactPhone", p.contact_phone);
     document.getElementById("modal-title").textContent = "Edit - " + p.name;
-    document.getElementById("modal-project-id").value = id;
     document.getElementById("modal-name-group").style.display = "none";
     document.getElementById("modal-status-group").style.display = "none";
-    document.getElementById("modal-customer-name").value = p.customer_name || "";
-    document.getElementById("modal-customer-address").value = p.customer_address || "";
-    document.getElementById("modal-project-url").value = p.project_url || "";
-    document.getElementById("modal-contact-person").value = p.contact_person || "";
-    document.getElementById("modal-contact-email").value = p.contact_email || "";
-    document.getElementById("modal-contact-phone").value = p.contact_phone || "";
     document.getElementById("modal-submit").textContent = "Save";
     document.getElementById("modal-overlay").classList.add("active");
-    setTimeout(() => document.getElementById("modal-customer-name").focus(), 100);
+    setTimeout(() => getModalElement("customerName").focus(), 100);
 }
 
 function closeModal() {
@@ -351,25 +594,31 @@ function closeModal() {
 }
 
 async function submitModal() {
-    const editId = document.getElementById("modal-project-id").value;
-    if (editId) {
-        const body = {
-            customer_name: document.getElementById("modal-customer-name").value.trim() || null,
-            customer_address: document.getElementById("modal-customer-address").value.trim() || null,
-            project_url: document.getElementById("modal-project-url").value.trim() || null,
-            contact_person: document.getElementById("modal-contact-person").value.trim() || null,
-            contact_email: document.getElementById("modal-contact-email").value.trim() || null,
-            contact_phone: document.getElementById("modal-contact-phone").value.trim() || null
-        };
-        try { await updateProjectDetails(editId, body); closeModal(); }
-        catch (e) { toast(e.message, "error"); }
-        return;
+    const editId = getModalElement("id").value;
+
+    // Get common project details
+    const details = {
+        customer_name: getModalElement("customerName").value.trim() || null,
+        customer_address: getModalElement("customerAddress").value.trim() || null,
+        project_url: getModalElement("projectUrl").value.trim() || null,
+        contact_person: getModalElement("contactPerson").value.trim() || null,
+        contact_email: getModalElement("contactEmail").value.trim() || null,
+        contact_phone: getModalElement("contactPhone").value.trim() || null
+    };
+
+    try {
+        if (editId) {
+            await updateProjectDetails(editId, details);
+        } else {
+            const name = getModalElement("name").value.trim();
+            const status = getModalElement("status").value;
+            if (!name) { toast("Name is required", "error"); return; }
+            await createProject(name, status, details);
+        }
+        closeModal();
+    } catch (e) {
+        toast(e.message, "error");
     }
-    const name = document.getElementById("modal-name").value.trim();
-    const status = document.getElementById("modal-status").value;
-    if (!name) { toast("Name is required", "error"); return; }
-    try { await createProject(name, status); closeModal(); }
-    catch (e) { toast(e.message, "error"); }
 }
 
 // Close overlays on backdrop click
@@ -391,7 +640,10 @@ function switchTab(tab) {
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
     document.getElementById("tab-" + tab).classList.add("active");
     document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add("active");
-    if (tab === "logs") { fetchLogs(); fetchLogStats(); }
+    if (tab === "logs") {
+        fetchLogs();
+        fetchLogStats();
+    }
 }
 
 async function quickVerify(name, btn) {
@@ -452,6 +704,14 @@ function filterLogs(statusCode) {
 document.getElementById("logs-search-input").addEventListener("input", e => {
     logsFilterProject = e.target.value.trim();
     logsCurrentPage = 0;
+
+    const infoLabel = document.getElementById("logs-filter-info");
+    if (logsFilterProject) {
+        infoLabel.innerHTML = `<span style="color:var(--success)">✓</span>Showing: <strong>${logsFilterProject}</strong> (in your logs)`;
+    } else {
+        infoLabel.innerHTML = `<span style="color:var(--success)">✓</span>Showing your project logs (+ 404s)`;
+    }
+
     fetchLogs();
 });
 
@@ -475,7 +735,9 @@ async function fetchLogStats() {
             document.getElementById("bar-402").style.width = `${(s402 / t * 100).toFixed(1)}%`;
             document.getElementById("bar-404").style.width = `${(s404 / t * 100).toFixed(1)}%`;
         } else { wrap.style.display = "none"; }
-    } catch (e) { /* silent */ }
+    } catch (e) {
+        toast("Failed to load log stats", "error");
+    }
 }
 
 async function fetchLogs() {
@@ -594,12 +856,11 @@ async function saveGlobalMessage(status) {
     const msg = document.getElementById(`gmsg-${status}`).value.trim();
     if (!msg) { toast("Message cannot be empty", "error"); return; }
     try {
-        const r = await authFetch(`${MSG_API}/${status}`, {
+        await apiCall(`${MSG_API}/${status}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: msg })
         });
-        if (!r.ok) throw new Error("Failed");
         toast(`Message for ${status} saved`);
     } catch (e) { toast("Failed to save message", "error"); }
 }
@@ -607,8 +868,7 @@ async function saveGlobalMessage(status) {
 async function resetAllGlobalMessages() {
     if (!confirm("Reset all global messages to defaults?")) return;
     try {
-        const r = await authFetch(`${MSG_API}/reset`, { method: "POST" });
-        if (!r.ok) throw new Error("Failed");
+        await apiCall(`${MSG_API}/reset`, { method: "POST" });
         toast("All messages reset to defaults");
         loadGlobalMessages();
     } catch (e) { toast("Failed to reset messages", "error"); }
@@ -657,12 +917,11 @@ async function saveProjectMessage(status) {
     const msg = document.getElementById(`pmsg-${status}`).value.trim();
     if (!msg) { toast("Message cannot be empty", "error"); return; }
     try {
-        const r = await authFetch(`${API}/${pmsgProjectId}/messages/${status}`, {
+        await apiCall(`${API}/${pmsgProjectId}/messages/${status}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: msg })
         });
-        if (!r.ok) throw new Error("Failed");
         toast(`Custom message for ${status} saved`);
         loadProjectMessages();
     } catch (e) { toast("Failed to save message", "error"); }
@@ -671,8 +930,7 @@ async function saveProjectMessage(status) {
 async function removeProjectMessage(status) {
     if (!pmsgProjectId) return;
     try {
-        const r = await authFetch(`${API}/${pmsgProjectId}/messages/${status}`, { method: "DELETE" });
-        if (!r.ok) throw new Error("Failed");
+        await apiCall(`${API}/${pmsgProjectId}/messages/${status}`, { method: "DELETE" });
         toast(`Custom override for ${status} removed`);
         loadProjectMessages();
     } catch (e) { toast("Failed to remove override", "error"); }
@@ -682,8 +940,8 @@ async function resetAllProjectMessages() {
     if (!pmsgProjectId) return;
     if (!confirm("Remove all custom message overrides for this project?")) return;
     try {
-        const r = await authFetch(`${API}/${pmsgProjectId}/messages/reset`, { method: "POST" });
-        if (!r.ok) throw new Error("Failed");
+        await apiCall(`${API}/${pmsgProjectId}/messages/reset`, { method: "POST" });
+
         toast("All project overrides removed");
         loadProjectMessages();
     } catch (e) { toast("Failed to reset messages", "error"); }
@@ -699,16 +957,108 @@ document.addEventListener("keydown", e => {
     if (e.key === "r" || e.key === "R") { e.preventDefault(); fetchProjects(); fetchLogStats(); }
 });
 
-function showLoginModal() {
-    document.getElementById("login-overlay").classList.add("active");
-    document.getElementById("login-overlay").style.display = "flex";
-    document.getElementById("app-wrap").style.display = "none";
-    document.getElementById("login-email").focus();
+function switchAuthTab(tab) {
+    const buttons = document.querySelectorAll('.auth-tab');
+    const contents = document.querySelectorAll('.auth-tab-content');
+
+    // Determine index based on tab name
+    const index = tab === 'login' ? 0 : 1;
+
+    // Update tab buttons
+    buttons.forEach((btn, i) => {
+        if (i === index) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Update tab content
+    contents.forEach((content, i) => {
+        if (i === index) {
+            content.classList.add('active');
+            content.style.display = 'block';
+        } else {
+            content.classList.remove('active');
+            content.style.display = 'none';
+        }
+    });
+
+    // Focus first input
+    const inputId = tab === 'login' ? 'login-email' : 'register-email';
+    const input = document.getElementById(inputId);
+    if (input) input.focus();
 }
 
-function closeLoginModal() {
-    document.getElementById("login-overlay").classList.remove("active");
-    document.getElementById("login-overlay").style.display = "none";
+function showAuthModal() {
+    const authOverlay = document.getElementById("auth-overlay");
+    const appWrap = document.getElementById("app-wrap");
+    authOverlay.classList.add("active");
+    authOverlay.style.display = "flex";
+    switchAuthTab('login');
+    if (appWrap) appWrap.style.display = "none";
+}
+
+async function handleRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById("register-name").value.trim();
+    const email = document.getElementById("register-email").value.trim();
+    const password = document.getElementById("register-password").value;
+    const passwordConfirm = document.getElementById("register-password-confirm").value;
+    const btn = e.target.querySelector("button[type=submit]");
+    const error = document.getElementById("register-error");
+
+    error.style.display = "none";
+
+    // Validate passwords match
+    if (!passwordsMatch(password, passwordConfirm)) {
+        error.textContent = "Passwords do not match";
+        error.style.display = "block";
+        return;
+    }
+
+    // Validate password strength using utility
+    const validation = validatePasswordStrength(password);
+    if (!validation.isValid()) {
+        let msg = "Password must be at least 8 characters";
+        if (!validation.hasUppercase) msg = "Password must contain at least one uppercase letter";
+        if (!validation.hasLowercase) msg = "Password must contain at least one lowercase letter";
+        if (!validation.hasNumber) msg = "Password must contain at least one number";
+        error.textContent = msg;
+        error.style.display = "block";
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Creating account...";
+
+    try {
+        const r = await fetch(`${AUTH_API}/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password })
+        });
+
+        if (!r.ok) {
+            const data = await r.json();
+            throw new Error(data.detail || "Registration failed");
+        }
+
+        const data = await r.json();
+        setToken(data.access_token);
+        const authOverlay = document.getElementById("auth-overlay");
+        authOverlay.classList.remove("active");
+        authOverlay.style.display = "none";
+        document.getElementById("app-wrap").style.display = "block";
+        initApp();
+        toast("Account created successfully!");
+    } catch (err) {
+        error.textContent = err.message || "Registration failed";
+        error.style.display = "block";
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Create Account";
+    }
 }
 
 async function handleLogin(e) {
@@ -724,7 +1074,9 @@ async function handleLogin(e) {
 
     try {
         await login(email, password);
-        closeLoginModal();
+        const authOverlay = document.getElementById("auth-overlay");
+        authOverlay.classList.remove("active");
+        authOverlay.style.display = "none";
         document.getElementById("app-wrap").style.display = "block";
         initApp();
     } catch (err) {
@@ -738,27 +1090,46 @@ async function handleLogin(e) {
 
 function initApp() {
     const wrap = document.getElementById("app-wrap");
-    const loginOverlay = document.getElementById("login-overlay");
+    const authOverlay = document.getElementById("auth-overlay");
 
     if (!isAuthenticated()) {
-        // Not authenticated - show login, hide app
         wrap.style.display = "none";
-        loginOverlay.classList.add("active");
-        loginOverlay.style.display = "flex";
+        authOverlay.classList.add("active");
+        authOverlay.style.display = "flex";
+        switchAuthTab('login');
         return;
     }
 
-    // Authenticated - hide login, show app
     wrap.style.display = "block";
-    loginOverlay.classList.remove("active");
-    loginOverlay.style.display = "none";
+    authOverlay.classList.remove("active");
+    authOverlay.style.display = "none";
+
+    // Load user info
+    loadUserInfo();
 
     // Load app data
     fetchProjects();
     fetchLogStats();
 }
 
-// Initialize on DOMContentLoaded or immediately if DOM is already loaded
+async function loadUserInfo() {
+    try {
+        const res = await authFetch("/auth/me");
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById("user-name").textContent = user.name || user.email;
+        }
+    } catch (err) {
+        console.error("Failed to load user info:", err);
+    }
+}
+
+// Set copyright year
+const yearElement = document.getElementById('copy-year');
+if (yearElement) {
+    yearElement.textContent = new Date().getFullYear();
+}
+
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initApp);
 } else {

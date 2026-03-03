@@ -82,6 +82,9 @@ class ProjectResponse(BaseModel):
     query parameter).
     """
 
+    api_token: str
+    """Unique API token for project verification."""
+
     status: str
     """Current payment status of the project."""
 

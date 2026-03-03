@@ -19,11 +19,28 @@
                     <p class="subtitle">Protect your revenue. Verify every payment.</p>
                 </div>
             </div>
-            <div class="meta">
-                <button class="btn btn-sm" onclick="logout()" title="Logout" style="margin-right: 1rem;">
+            <div class="user-menu">
+                <button class="user-menu-trigger" onclick="toggleUserMenu(event)" title="User menu">
                     <img src="/static/assets/icons/user.svg" class="svg-icon" width="13" height="13" alt="">
-                    Logout
+                    <span id="user-name">User</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
                 </button>
+                <div class="user-menu-dropdown" id="user-menu-dropdown" style="display: none;">
+                    <a href="#" onclick="openProfileModal(event)" class="user-menu-item">
+                        <img src="/static/assets/icons/edit.svg" class="svg-icon" width="14" height="14" alt="">
+                        Edit Profile
+                    </a>
+                    <a href="#" onclick="logout(event)" class="user-menu-item">
+                        <img src="/static/assets/icons/log-out.svg" class="svg-icon" width="14" height="14" alt="">
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="metrics-bar">
+            <div class="meta">
                 <div class="meta-item">
                     <img src="/static/assets/icons/activity.svg" class="meta-icon svg-icon" width="14" height="14"
                         alt="">
@@ -119,6 +136,9 @@
                 <div class="logs-search">
                     <img src="/static/assets/icons/search.svg" class="svg-icon" width="13" height="13" alt="">
                     <input type="text" id="logs-search-input" placeholder="Filter by project…" autocomplete="off">
+                    <span id="logs-filter-info" style="margin-left:0.5rem;color:var(--info);font-size:0.85rem;display:flex;align-items:center;gap:0.3rem">
+                        <span style="color:var(--success)">✓</span>Showing your project logs (+ 404s)
+                    </span>
                 </div>
             </div>
             <div class="logs-toolbar">
@@ -189,7 +209,7 @@
             <input type="hidden" id="modal-project-id">
             <div id="modal-name-group">
                 <label for="modal-name">Project Name</label>
-                <input type="text" id="modal-name" placeholder="e.g. Sport-Betting-App" autocomplete="off">
+                <input type="text" id="modal-name" placeholder="e.g. MyProject-App" autocomplete="off">
             </div>
             <div id="modal-status-group">
                 <label for="modal-status">Status</label>
@@ -264,26 +284,125 @@
 
     <div class="toast-container" id="toasts"></div>
 
-    <div class="modal-overlay active" id="login-overlay" style="display: flex !important;">
-        <div class="modal" style="max-width: 400px;">
-            <h2>Login Required</h2>
-            <p style="color: var(--muted); margin-bottom: 1.5rem;">Please login to access the admin dashboard</p>
-            <form onsubmit="handleLogin(event)">
-                <label for="login-email">Email</label>
-                <input type="email" id="login-email" placeholder="admin@example.com" required autocomplete="email">
+    <div class="modal-overlay" id="profile-overlay" style="display: none;">
+        <div class="modal" style="max-width: 500px;">
+            <h2>Edit Profile</h2>
+            <form onsubmit="handleProfileUpdate(event)">
+                <label for="profile-name">Name</label>
+                <input type="text" id="profile-name" required autocomplete="name">
 
-                <label for="login-password">Password</label>
-                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                <label for="profile-email">Email</label>
+                <input type="email" id="profile-email" required autocomplete="email">
 
-                <div id="login-error" style="display: none; color: var(--unpaid); margin: 1rem 0; padding: 0.75rem; background: var(--unpaid-bg); border: 1px solid var(--unpaid); border-radius: 6px;"></div>
+                <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                    <h3 style="margin-bottom: 1rem; font-size: 1rem;">Change Password (Optional)</h3>
 
-                <div class="modal-actions" style="margin-top: 1.5rem;">
-                    <button type="submit" class="btn" style="width: 100%;">Login</button>
+                    <label for="profile-current-password">Current Password</label>
+                    <input type="password" id="profile-current-password" placeholder="Leave blank to keep current password" autocomplete="current-password">
+
+                    <label for="profile-new-password">New Password</label>
+                    <input type="password" id="profile-new-password" placeholder="Leave blank to keep current password" minlength="8" autocomplete="new-password" oninput="checkPasswordStrength()">
+
+                    <div id="password-strength" style="display: none; margin-top: 0.5rem;">
+                        <div style="display: flex; gap: 0.25rem; margin-bottom: 0.5rem;">
+                            <div class="strength-bar" id="strength-1"></div>
+                            <div class="strength-bar" id="strength-2"></div>
+                            <div class="strength-bar" id="strength-3"></div>
+                            <div class="strength-bar" id="strength-4"></div>
+                        </div>
+                        <div id="password-strength-text" style="font-size: 0.8rem; color: var(--muted);"></div>
+                        <ul id="password-requirements" style="font-size: 0.8rem; margin-top: 0.5rem; padding-left: 1.5rem; color: var(--muted);">
+                            <li id="req-length">At least 8 characters</li>
+                            <li id="req-uppercase">At least one uppercase letter</li>
+                            <li id="req-lowercase">At least one lowercase letter</li>
+                            <li id="req-number">At least one number</li>
+                        </ul>
+                    </div>
+
+                    <label for="profile-confirm-password">Confirm New Password</label>
+                    <input type="password" id="profile-confirm-password" placeholder="Re-enter new password" autocomplete="new-password" oninput="checkPasswordMatch()">
+                    <div id="password-match-error" style="display: none; color: var(--unpaid); font-size: 0.85rem; margin-top: 0.5rem;">Passwords do not match</div>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 2rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeProfileModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <div class="modal-overlay active" id="auth-overlay" style="display: flex !important;">
+        <div class="modal" style="max-width: 420px;">
+            <h2 style="margin-bottom: 1.5rem; text-align: center; color: var(--muted);">Welcome to Payment Verifier</h2>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">Create Account</button>
+            </div>
+
+            <div class="auth-tab-content active" id="auth-tab-login">
+                <form onsubmit="handleLogin(event)">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" placeholder="admin@example.com" required autocomplete="email">
+
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+
+                    <div id="login-error" style="display: none; color: var(--unpaid); margin: 1rem 0; padding: 0.75rem; background: var(--unpaid-bg); border: 1px solid var(--unpaid); border-radius: 6px;"></div>
+
+                    <div class="modal-actions" style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Login</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="auth-tab-content" id="auth-tab-register" style="display: none;">
+                <form onsubmit="handleRegister(event)">
+                    <label for="register-name">Name</label>
+                    <input type="text" id="register-name" placeholder="Your Name" required autocomplete="name">
+
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" placeholder="admin@example.com" required autocomplete="email">
+
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" placeholder="Password (min 8 characters)" required autocomplete="new-password" minlength="8" oninput="checkRegisterPasswordStrength()">
+
+                    <div id="register-password-strength" style="display: none; margin-top: 0.5rem;">
+                        <div style="display: flex; gap: 0.25rem; margin-bottom: 0.5rem;">
+                            <div class="strength-bar" id="register-strength-bar-1"></div>
+                            <div class="strength-bar" id="register-strength-bar-2"></div>
+                            <div class="strength-bar" id="register-strength-bar-3"></div>
+                            <div class="strength-bar" id="register-strength-bar-4"></div>
+                        </div>
+                        <div id="register-strength-text" style="font-size: 0.8rem; color: var(--muted);"></div>
+                        <ul id="register-requirements" style="font-size: 0.8rem; margin-top: 0.5rem; padding-left: 1.5rem; color: var(--muted);">
+                            <li id="register-req-length">At least 8 characters</li>
+                            <li id="register-req-uppercase">At least one uppercase letter</li>
+                            <li id="register-req-lowercase">At least one lowercase letter</li>
+                            <li id="register-req-number">At least one number</li>
+                        </ul>
+                    </div>
+
+                    <label for="register-password-confirm">Confirm Password</label>
+                    <input type="password" id="register-password-confirm" placeholder="Confirm your password" required autocomplete="new-password" minlength="8" oninput="checkRegisterPasswordMatch()">
+                    <div id="register-password-match-error" style="display: none; color: var(--unpaid); font-size: 0.85rem; margin-top: 0.5rem;">Passwords do not match</div>
+
+                    <div id="register-error" style="display: none; color: var(--unpaid); margin: 1rem 0; padding: 0.75rem; background: var(--unpaid-bg); border: 1px solid var(--unpaid); border-radius: 6px;"></div>
+
+                    <div class="modal-actions" style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Create Account</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="auth-footer">
+                <p>&copy; 2025-<span id="copy-year">2026</span> Payment Verifier. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/assets/js/password-utils.js?v={{ version }}"></script>
     <script src="/static/assets/js/admin.js?v={{ version }}"></script>
 </body>
 

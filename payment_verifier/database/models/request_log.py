@@ -6,7 +6,7 @@ Request log model
 import datetime
 from typing import Any, cast
 
-from sqlalchemy import DateTime, Integer, Select, String, delete, func, select
+from sqlalchemy import DateTime, Integer, Select, String, and_, delete, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
@@ -51,16 +51,36 @@ class RequestLog(Base):
 def _apply_log_filters(
     stmt: Select[Any],
     *,
+    user_id: int | None = None,
     status_code: int | None = None,
     project_name: str | None = None,
 ) -> Select[Any]:
-    """Append common WHERE clauses for log queries."""
+    """Append common WHERE clauses for log queries. If user_id is provided, only
+    shows logs from projects owned by that user or 404 errors (unknown projects).
+    """
+
+    # Prevent circular import
+    from payment_verifier.database.models.project import Project
+
+    if user_id is not None:
+        stmt = (
+            stmt.join(
+                Project,
+                RequestLog.project_name == Project.name,
+                isouter=True,
+            )
+            .where(
+                and_(
+                    (Project.user_id == user_id) | (Project.id.is_(None)),
+                )
+            )
+        )
 
     if status_code is not None:
-        return stmt.where(RequestLog.status_code == status_code)
+        stmt = stmt.where(RequestLog.status_code == status_code)
 
     if project_name:
-        return stmt.where(RequestLog.project_name.ilike(f"%{project_name}%"))
+        stmt = stmt.where(RequestLog.project_name.ilike(f"%{project_name}%"))
 
     return stmt
 
@@ -93,12 +113,17 @@ async def list_request_logs(
     *,
     limit: int = 100,
     offset: int = 0,
+    user_id: int | None = None,
     status_code: int | None = None,
     project_name: str | None = None,
 ) -> list[RequestLog]:
-    """Return recent request logs, newest first, with optional filters."""
+    """Return recent request logs, newest first, with optional filters. If user_id is provided,
+    only returns logs from that users projects or 404s.
+    """
 
-    stmt = _apply_log_filters(select(RequestLog), status_code=status_code, project_name=project_name)
+    stmt = _apply_log_filters(
+        select(RequestLog), user_id=user_id, status_code=status_code, project_name=project_name
+    )
     stmt = stmt.order_by(RequestLog.created_at.desc(), RequestLog.id.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
 
@@ -108,30 +133,55 @@ async def list_request_logs(
 async def count_request_logs(
     session: AsyncSession,
     *,
+    user_id: int | None = None,
     status_code: int | None = None,
     project_name: str | None = None,
 ) -> int:
-    """Return total number of request log entries (with optional filters)."""
+    """Return total number of request log entries (with optional filters). If user_id is provided,
+    only counts logs from that users projects or 404s.
+    """
 
-    stmt = _apply_log_filters(select(func.count(RequestLog.id)), status_code=status_code, project_name=project_name)
+    stmt = _apply_log_filters(
+        select(func.count(RequestLog.id)), user_id=user_id, status_code=status_code, project_name=project_name
+    )
     result = await session.execute(stmt)
 
     return result.scalar_one()
 
 
-async def get_log_stats(session: AsyncSession) -> dict[str, int]:
-    """Return request count grouped by status code."""
+async def get_log_stats(session: AsyncSession, user_id: int | None = None) -> dict[str, int]:
+    """Return request count grouped by status code. If user_id is provided, only counts
+    logs from that users projects or 404s.
+    """
 
-    stmt = select(RequestLog.status_code, func.count(RequestLog.id)).group_by(RequestLog.status_code)
+    # Prevent circular import
+    from payment_verifier.database.models.project import Project
 
+    stmt = select(RequestLog.status_code, func.count(RequestLog.id))
+    if user_id is not None:
+        stmt = (
+            stmt.join(
+                Project,
+                RequestLog.project_name == Project.name,
+                isouter=True,
+            )
+            .where(
+                and_(
+                    (Project.user_id == user_id) | (Project.id.is_(None)),
+                )
+            )
+        )
+
+    stmt = stmt.group_by(RequestLog.status_code)
     result = await session.execute(stmt)
     stats: dict[str, int] = {}
     total = 0
+
     for code, cnt in result.all():
         stats[str(code)] = cnt
         total += cnt
-    stats["total"] = total
 
+    stats["total"] = total
     return stats
 
 

@@ -27,6 +27,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://payment_verifier:payment_verifier@db:5432/payment_verifier
       - DATABASE_URL_SYNC=postgresql+psycopg2://payment_verifier:payment_verifier@db:5432/payment_verifier
+      - SECRET_KEY=Iw6JNAprY5Mh3YCRhF6yyiiH7zi_COEdV7qz2jtf3Us
     depends_on:
       db:
         condition: service_healthy

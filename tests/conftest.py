@@ -3,6 +3,7 @@ Test fixtures
 =============
 """
 
+import os
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -12,6 +13,10 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+
+# Set SECRET_KEY for tests before importing payment_verifier modules
+if "SECRET_KEY" not in os.environ:
+    os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-do-not-use-in-production"  # noqa
 
 from payment_verifier.database.connection import get_session
 from payment_verifier.database.models import Base
@@ -79,5 +84,6 @@ async def user(session: AsyncSession) -> User:
     return await create_user(
         session,
         email='test@example.com',
+        name='Test User',
         password_hash=test_hash,
     )
