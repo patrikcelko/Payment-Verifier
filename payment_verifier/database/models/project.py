@@ -12,9 +12,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from payment_verifier.database.models.base import Base
 
-# Valid project statuses
-VALID_STATUSES = frozenset({"OK", "UNPAID", "PENDING", "OVERDUE", "PARTIAL", "SUSPENDED"})
-
 # Statuses that block payment verification (return 402)
 BLOCKED_STATUSES = frozenset({"UNPAID", "OVERDUE", "PARTIAL", "SUSPENDED"})
 

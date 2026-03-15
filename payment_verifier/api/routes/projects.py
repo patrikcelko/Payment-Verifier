@@ -208,11 +208,12 @@ async def api_delete_project(
 async def api_list_notes(
     project_id: int,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> NoteListResponse:
     """Return all notes for a project, newest first."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     notes = await list_notes(session, project_id)
@@ -233,11 +234,12 @@ async def api_create_note(
     project_id: int,
     body: NoteCreate,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> NoteResponse:
     """Attach a new note to a project."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     note = await create_note(session, project_id=project_id, content=body.content)
@@ -254,8 +256,13 @@ async def api_delete_note(
     project_id: int,
     note_id: int,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> MessageResponse:
     """Remove a note from a project."""
+
+    row = await get_project_by_id(session, project_id)
+    if row is None or row.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     note = await get_note_by_id(session, note_id)
     if note is None or note.project_id != project_id:
@@ -273,6 +280,7 @@ async def api_delete_note(
 )
 async def api_list_status_messages(
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> StatusMessageListResponse:
     """Return all custom status messages, merged with defaults."""
 
@@ -299,6 +307,7 @@ async def api_update_status_message(
     status: str,
     body: StatusMessageUpdate,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> StatusMessageResponse:
     """Set a custom message for the given status."""
 
@@ -321,6 +330,7 @@ async def api_update_status_message(
 )
 async def api_reset_status_messages(
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> StatusMessageListResponse:
     """Restore every status message to its built-in default."""
 
@@ -339,6 +349,7 @@ async def api_reset_status_messages(
 async def api_list_project_messages(
     project_id: int,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectMessagesResponse:
     """Return the effective message for each blocked status.
 
@@ -347,7 +358,7 @@ async def api_list_project_messages(
     """
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     project_rows = await list_project_messages(session, project_id)
@@ -390,11 +401,12 @@ async def api_set_project_message(
     status: str,
     body: StatusMessageUpdate,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> StatusMessageResponse:
     """Override the message for a specific status on one project."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
 
     upper = status.upper()
@@ -423,11 +435,12 @@ async def api_delete_project_message(
     project_id: int,
     status: str,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> MessageResponse:
     """Remove the project-level override so the global default is used."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
     upper = status.upper()
     deleted = await delete_project_message(session, project_id=project_id, status=upper)
@@ -446,11 +459,12 @@ async def api_delete_project_message(
 async def api_reset_project_messages(
     project_id: int,
     session: DBSession,
+    user: Annotated[User, Depends(get_current_user)],
 ) -> MessageResponse:
     """Remove every project-level message override."""
 
     row = await get_project_by_id(session, project_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Project not found")
     await reset_project_messages(session, project_id)
 

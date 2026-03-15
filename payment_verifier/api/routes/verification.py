@@ -64,7 +64,7 @@ async def check(
 
     # If no project or token is specified, serve the admin dashboard
     if project is None and token is None:
-        return templates.TemplateResponse(request, "admin.html", {"version": __version__})
+        return templates.TemplateResponse(request, "main.html", {"version": __version__})
 
     # Use token if provided, otherwise use project name
     if token is not None:

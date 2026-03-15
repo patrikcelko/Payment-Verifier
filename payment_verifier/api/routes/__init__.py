@@ -7,11 +7,13 @@ from fastapi import APIRouter
 
 from payment_verifier.api.routes.admin import router as admin_router
 from payment_verifier.api.routes.auth import router as auth_router
+from payment_verifier.api.routes.health import router as health_router
 from payment_verifier.api.routes.logs import router as logs_router
 from payment_verifier.api.routes.projects import router as projects_router
 from payment_verifier.api.routes.verification import router as verification_router
 
 router = APIRouter()
+router.include_router(health_router)
 router.include_router(auth_router)
 router.include_router(admin_router)
 router.include_router(verification_router)

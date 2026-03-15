@@ -20,4 +20,4 @@ templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
 async def admin_dashboard(request: Request) -> Response:
     """Serve the admin dashboard SPA."""
 
-    return templates.TemplateResponse(request, "admin.html", {"version": __version__})
+    return templates.TemplateResponse(request, "main.html", {"version": __version__})

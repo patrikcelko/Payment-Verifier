@@ -15,7 +15,7 @@ from payment_verifier.utilities.settings import DATABASE_URL
 
 __all__ = ["async_session_factory", "engine", "get_session"]
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
 async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine,

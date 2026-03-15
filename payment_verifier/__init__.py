@@ -5,13 +5,13 @@ Payment Verifier
 Payment status verification service.
 """
 
+import os
 from pathlib import Path
 
 __version__: str = "1.5.11"
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from payment_verifier.api import router
@@ -29,13 +29,15 @@ app = FastAPI(
 )
 """Application instance."""
 
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 app.state.limiter = limiter
+
+_cors_origins_raw = os.environ.get("PV_CORS_ORIGINS", "*")
+_cors_origins: list[str] = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials="*" not in _cors_origins,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
