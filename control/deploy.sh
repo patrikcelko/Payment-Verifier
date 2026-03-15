@@ -8,9 +8,11 @@ source "${SCRIPT_DIR}/build.sh"
 
 function deploy_payment_verifier() {
     local SERVICE_HOST="root@x.x.x.x"  # Remote server SSH address
-    local ENV_NAME="prod"
+    local ENV_NAME="${1:-prod}"
     local SERVER_WORK_DIR="/root/docker/payment_verifier"
     local DOCKER_DIR="${PROJECT_ROOT}/docker"
+
+    resolve_env_file "$ENV_NAME"
 
     info "Starting deployment to remote server..."
 
@@ -19,20 +21,30 @@ function deploy_payment_verifier() {
         exit 2
     fi
 
+    # Detect compose command on the remote server
+    resolve_compose_cmd "$SERVICE_HOST"
+    info "Remote compose command: ${COMPOSE_CMD}"
+
     info "Copying configuration files to server..."
     if ! scp "${DOCKER_DIR}/docker-compose-server.yml" "$SERVICE_HOST:$SERVER_WORK_DIR/docker-compose.yml"; then
-        error "Failed to copy configuration files."
+        error "Failed to copy docker-compose-server.yml."
+        exit 1
+    fi
+    if ! scp "$ENV_FILE" "$SERVICE_HOST:$SERVER_WORK_DIR/.env_${ENV_NAME}"; then
+        error "Failed to copy environment file."
         exit 1
     fi
 
+    local REMOTE_CMD="$COMPOSE_CMD -f $SERVER_WORK_DIR/docker-compose.yml --env-file $SERVER_WORK_DIR/.env_${ENV_NAME}"
+
     info "Pulling latest image from registry..."
-    if ! ssh "$SERVICE_HOST" "docker compose -f $SERVER_WORK_DIR/docker-compose.yml pull"; then
+    if ! ssh "$SERVICE_HOST" "$REMOTE_CMD pull"; then
         error "Failed to pull image from registry."
         exit 1
     fi
 
     info "Starting containers..."
-    if ! ssh "$SERVICE_HOST" "docker compose -f $SERVER_WORK_DIR/docker-compose.yml up -d --remove-orphans"; then
+    if ! ssh "$SERVICE_HOST" "$REMOTE_CMD up -d --remove-orphans"; then
         error "Failed to start containers."
         exit 1
     fi

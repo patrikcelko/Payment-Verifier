@@ -1,15 +1,27 @@
 #!/usr/bin/env bash
 
 function rebuild_docker_containers_payment_verifier () {
-    info "Rebuilding containers for Payment Verifier. Please wait..."
+    local env_name="${1:-local}"
+    resolve_compose_cmd
+    resolve_env_file "$env_name"
 
-    docker compose -f docker/docker-compose.yml down
-    docker compose -f docker/docker-compose.yml build --no-cache
-    docker compose -f docker/docker-compose.yml up
+    local compose_file="${PROJECT_ROOT}/docker/docker-compose.yml"
+
+    info "Rebuilding containers for Payment Verifier (env: ${env_name}). Please wait..."
+
+    $COMPOSE_CMD -f "$compose_file" --env-file "$ENV_FILE" down
+    $COMPOSE_CMD -f "$compose_file" --env-file "$ENV_FILE" build --no-cache
+    $COMPOSE_CMD -f "$compose_file" --env-file "$ENV_FILE" up -d
 }
 
 function start_docker_container_payment_verifier () {
-    info "Starting docker containers for Payment Verifier. Please wait..."
+    local env_name="${1:-local}"
+    resolve_compose_cmd
+    resolve_env_file "$env_name"
 
-    docker compose -f docker/docker-compose.yml up -d
+    local compose_file="${PROJECT_ROOT}/docker/docker-compose.yml"
+
+    info "Starting docker containers for Payment Verifier (env: ${env_name}). Please wait..."
+
+    $COMPOSE_CMD -f "$compose_file" --env-file "$ENV_FILE" up -d
 }

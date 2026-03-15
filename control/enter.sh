@@ -5,7 +5,7 @@ function _fetch_containers {
 }
 
 function enter {
-    for ARG in $@; do
+    for ARG in "$@"; do
         if [[ "$ARG" == "-r" ]]; then
                 AS_ROOT="-u 0"
         elif [[ -n "$ARG" && ${#ARG} -ge 3 ]]; then
@@ -21,14 +21,14 @@ function enter {
         read -p "${C_BLUE}■ ${C_BRIGHT_WHITE}Enter ID or name: " PATTERN
     fi
 
-    CONTAINER=$(_fetch_containers | grep -i $PATTERN | head -1)
-    ID=$(echo $CONTAINER | awk '{print $1}')
-    NAME=$(echo $CONTAINER | awk '{print $3}')
+    CONTAINER=$(_fetch_containers | grep -i "$PATTERN" | head -1)
+    ID=$(echo "$CONTAINER" | awk '{print $1}')
+    NAME=$(echo "$CONTAINER" | awk '{print $3}')
     if [[ -z "$ID" ]]; then
         error "No container matched."
-        exit 0
+        exit 1
     fi
 
     success "Entering container $NAME ($ID)${C_BRIGHT_WHITE}"
-    docker exec $AS_ROOT -it $ID /bin/bash
+    docker exec ${AS_ROOT} -it "$ID" /bin/bash
 }

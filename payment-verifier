@@ -43,14 +43,14 @@ if [[ "$COMMAND" == "build" ]]; then
 fi
 
 if [[ "$COMMAND" == "start-docker" ]]; then
-    start_docker_container_payment_verifier
+    start_docker_container_payment_verifier "$2"
 
     EXITCODE=$?
 	exit $EXITCODE
 fi
 
 if [[ "$COMMAND" == "rebuild-docker" ]]; then
-    rebuild_docker_containers_payment_verifier
+    rebuild_docker_containers_payment_verifier "$2"
 
     EXITCODE=$?
 	exit $EXITCODE

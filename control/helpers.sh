@@ -62,19 +62,20 @@ function print_help {
     option "  help"
     echo "    Display this help message."
 
-    option "  deploy"
-    echo "    Deploy Payment Verifier to a remote server. (Must be configured in the script)"
+    option "  deploy [env]"
+    echo "    Deploy Payment Verifier to a remote server. Uses .env_<env> (default: prod)."
+    echo "    The ENV_NAME from the env file determines the image tag pulled from registry."
 
     option "  build"
     echo "    Build the Docker image and push it to the registry."
 
-    option "  start-docker"
-    echo "    Start already built container. This is the preferred method to use."
+    option "  start-docker [env]"
+    echo "    Start already built container. Uses .env_<env> (default: local)."
     echo "    Note that if the container is not built, this process will fail."
 
-    option "  rebuild-docker"
+    option "  rebuild-docker [env]"
     echo "    This command will add a forced build attribute to docker compose."
-    echo "    It should not affect stored data, however be careful."
+    echo "    Uses .env_<env> (default: local). It should not affect stored data."
 
     option "  kill-docker"
     echo "    Forcefully kills all running docker containers (all containers!)."
@@ -83,4 +84,47 @@ function print_help {
     echo "    Allows us to enter any of the running docker containers if an ID"
     echo "    or name is provided. If left empty, a listing will be displayed."
     echo
+}
+
+function resolve_compose_cmd() {
+    local remote_host="$1"
+
+    if [[ -z "$remote_host" ]]; then
+        # Local detection (skip if already resolved without a host)
+        if [[ -n "${COMPOSE_CMD+x}" ]]; then
+            return 0
+        fi
+
+        if docker compose version &>/dev/null; then
+            COMPOSE_CMD="docker compose"
+        elif command -v docker-compose &>/dev/null; then
+            COMPOSE_CMD="docker-compose"
+        else
+            error "Neither 'docker compose' (v2) nor 'docker-compose' (v1) found."
+            exit 1
+        fi
+    else
+        # Remote detection via SSH
+        if ssh "$remote_host" "docker compose version" &>/dev/null; then
+            COMPOSE_CMD="docker compose"
+        elif ssh "$remote_host" "command -v docker-compose" &>/dev/null; then
+            COMPOSE_CMD="docker-compose"
+        else
+            error "Neither 'docker compose' (v2) nor 'docker-compose' (v1) found on ${remote_host}."
+            exit 1
+        fi
+    fi
+}
+
+function resolve_env_file() {
+    local env_name="${1:-local}"
+    local docker_dir="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/docker"
+    ENV_FILE="${docker_dir}/data/.env_${env_name}"
+
+    if [[ ! -f "$ENV_FILE" ]]; then
+        error "Environment file not found: ${ENV_FILE}"
+        exit 1
+    fi
+
+    info "Using environment: .env_${env_name}"
 }

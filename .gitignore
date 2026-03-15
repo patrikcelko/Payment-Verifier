@@ -110,3 +110,9 @@ marimo/_lsp/
 __marimo__/
 
 *__pycache__
+
+node_modules/
+payment_verifier/static/js/admin.bundle.js
+payment_verifier/static/js/admin.bundle.js.map
+
+coverage

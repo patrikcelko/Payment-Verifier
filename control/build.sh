@@ -5,10 +5,12 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 source "${SCRIPT_DIR}/helpers.sh"
 
-readonly IMAGE_NAME="payment-verifier"
-readonly ENV_NAME="prod"
-readonly DOCKER_REGISTRY="harbor.celko.cz/payment-verifier"
-readonly DOCKER_DIR="${PROJECT_ROOT}/docker"
+if [[ -z "${IMAGE_NAME+x}" ]]; then
+    readonly IMAGE_NAME="payment-verifier"
+    readonly ENV_NAME="prod"
+    readonly DOCKER_REGISTRY="harbor.celko.cz/payment-verifier"
+    readonly DOCKER_DIR="${PROJECT_ROOT}/docker"
+fi
 
 export DOCKER_BUILDKIT=1
 
