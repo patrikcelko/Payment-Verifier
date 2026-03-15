@@ -7,9 +7,6 @@ This system **automatically blocks project access when payments are overdue**, t
 ![Version](https://img.shields.io/badge/version-1.5.11-blue)
 ![Python 3.12](https://img.shields.io/badge/Python-3.13-red)
 
-<img width="2063" height="1367" alt="image" src="https://github.com/user-attachments/assets/479bf7c6-0dd1-4c34-ae52-0a891dda93ec" />
-<img width="2063" height="1367" alt="image" src="https://github.com/user-attachments/assets/d91f4195-d507-4ef6-a312-2cc1fa4617e3" />
-
 ## Requirements
 
 - **Docker** (version 20.10+)
