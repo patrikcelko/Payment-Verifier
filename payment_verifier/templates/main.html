@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Payment Verifier</title>
+    <link rel="icon" href="/static/assets/icons/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/static/assets/css/main.css?v={{ version }}">
+</head>
+
+<body>
+    
+    {% include "partials/auth.html" %}
+
+    <div class="app-layout" id="app-wrap" style="display:none">
+
+        {% include "partials/header.html" %}
+
+        <div class="section-tabs-wrap">
+            <nav class="section-tabs">
+                <button class="section-tab active" data-tab="projects" onclick="switchTab('projects')">
+                    <img src="/static/assets/icons/check-verified.svg" class="svg-icon" width="14" height="14" alt="">
+                    Projects
+                </button>
+                <button class="section-tab" data-tab="logs" onclick="switchTab('logs')">
+                    <img src="/static/assets/icons/file-text.svg" class="svg-icon" width="14" height="14" alt="">
+                    Request Logs <span class="tab-badge" id="logs-badge" style="display:none">0</span>
+                </button>
+            </nav>
+        </div>
+
+        <main class="main-content">
+
+            <div class="tab-content active" id="tab-projects">
+                <div class="section-toolbar">
+                    <div class="search">
+                        <img src="/static/assets/icons/search.svg" class="svg-icon search-icon" width="16" height="16"
+                            alt="">
+                        <input type="text" id="search-input" placeholder="Search projects, customers…"
+                            autocomplete="off">
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="btn" onclick="openGlobalMsgEditor()" title="Global status messages (M)">
+                            <img src="/static/assets/icons/mail.svg" class="svg-icon" width="13" height="13" alt="">
+                            Global Messages
+                        </button>
+                        <button class="btn" onclick="openCreateModal()">
+                            <img src="/static/assets/icons/plus.svg" class="svg-icon" width="14" height="14" alt="">
+                            Add Project
+                        </button>
+                    </div>
+                </div>
+
+                <div id="projects-grid" class="grid"></div>
+                <div id="empty-state" class="empty-state" style="display:none">
+                    <img src="/static/assets/icons/plus.svg" class="svg-icon" width="56" height="56" alt="">
+                    <p>No projects registered yet</p>
+                </div>
+                <div id="empty-search" class="empty-search" style="display:none">
+                    <img src="/static/assets/icons/search.svg" class="svg-icon" width="44" height="44" alt="">
+                    <p>No projects match your search</p>
+                    <small>Try a different search term</small>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-logs">
+                <div class="stats-bar-wrap" id="stats-bar-wrap" style="display:none">
+                    <div class="stats-bar-labels">
+                        <span><span class="dot" style="background:var(--ok)"></span> 200 OK: <strong
+                                id="stat-200">0</strong></span>
+                        <span><span class="dot" style="background:var(--unpaid)"></span> 402 Unpaid: <strong
+                                id="stat-402">0</strong></span>
+                        <span><span class="dot" style="background:var(--text-muted)"></span> 404 Not Found: <strong
+                                id="stat-404">0</strong></span>
+                    </div>
+                    <div class="stats-bar">
+                        <div class="bar-200" id="bar-200" style="width:0"></div>
+                        <div class="bar-402" id="bar-402" style="width:0"></div>
+                        <div class="bar-404" id="bar-404" style="width:0"></div>
+                    </div>
+                </div>
+                <div class="logs-toolbar">
+                    <div class="filter-chips">
+                        <button class="chip active" onclick="filterLogs(null)">All</button>
+                        <button class="chip" onclick="filterLogs(200)">200 OK</button>
+                        <button class="chip" onclick="filterLogs(402)">402 Unpaid</button>
+                        <button class="chip" onclick="filterLogs(404)">404 Not Found</button>
+                    </div>
+                    <div class="logs-search">
+                        <img src="/static/assets/icons/search.svg" class="svg-icon" width="13" height="13" alt="">
+                        <input type="text" id="logs-search-input" placeholder="Filter by project…" autocomplete="off">
+                        <span class="logs-filter-pill" id="logs-filter-info">
+                            <img src="/static/assets/icons/check-circle.svg" class="svg-icon" width="12" height="12"
+                                alt="">
+                            Your projects + 404 responses
+                        </span>
+                    </div>
+                </div>
+                <div class="logs-toolbar">
+                    <div class="pill">
+                        <img src="/static/assets/icons/file-text.svg" class="svg-icon" width="14" height="14" alt="">
+                        Matching: <span id="logs-total">0</span>
+                    </div>
+                    <div class="logs-pagination">
+                        <button class="btn btn-sm" id="logs-prev" onclick="logsPage(-1)" disabled>
+                            <img src="/static/assets/icons/chevron-left.svg" class="svg-icon" width="12" height="12"
+                                alt="">
+                            Prev
+                        </button>
+                        <span class="pill" id="logs-page-info">1 / 1</span>
+                        <button class="btn btn-sm" id="logs-next" onclick="logsPage(1)">
+                            Next <img src="/static/assets/icons/chevron-right.svg" class="svg-icon" width="12"
+                                height="12" alt="">
+                        </button>
+                        <button class="btn btn-sm" onclick="fetchLogs()">
+                            <img src="/static/assets/icons/refresh.svg" class="svg-icon" width="12" height="12" alt="">
+                            Refresh
+                        </button>
+                        <button class="btn btn-sm" onclick="exportCSV()">
+                            <img src="/static/assets/icons/download.svg" class="svg-icon" width="12" height="12" alt="">
+                            Export
+                        </button>
+                        <label class="toggle-wrap" title="Auto-refresh every 10s">
+                            <input type="checkbox" id="auto-refresh-toggle" onclick="toggleAutoRefresh()">
+                            Auto
+                        </label>
+                    </div>
+                </div>
+                <div class="logs-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                                <th>Client IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-body"></tbody>
+                    </table>
+                </div>
+                <div id="logs-empty" class="empty-state" style="display:none">
+                    <img src="/static/assets/icons/file-text.svg" class="svg-icon" width="56" height="56" alt="">
+                    <p>No request logs recorded yet</p>
+                </div>
+            </div>
+
+        </main>
+
+        {% include "partials/footer.html" %}
+
+    </div>
+
+    {% include "partials/modals.html" %}
+
+    <div class="toast-container" id="toasts"></div>
+
+    <script src="/static/js/admin.bundle.js?v={{ version }}"></script>
+</body>
+
+</html>

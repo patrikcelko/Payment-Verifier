@@ -1,0 +1,63 @@
+<header class="app-header">
+    <div class="header-left">
+        <img src="/static/assets/images/logo.png" alt="Payment Verifier" class="header-logo">
+        <div class="header-title-wrap">
+            <h1><span class="accent">Payment</span> Verifier</h1>
+            <p class="header-subtitle">Protect your revenue, verify every payment.</p>
+        </div>
+    </div>
+    <div class="header-center">
+        <div class="header-stats">
+            <div class="header-stat" data-color="danger">
+                <img src="/static/assets/icons/activity.svg" class="svg-icon" width="14" height="14" alt="">
+                <span class="header-stat-label">Blocked</span>
+                <strong id="blocked-count">0</strong>
+            </div>
+            <div class="header-stat-sep"></div>
+            <div class="header-stat">
+                <img src="/static/assets/icons/check-verified.svg" class="svg-icon" width="14" height="14" alt="">
+                <span class="header-stat-label">Projects</span>
+                <strong id="total-count">0</strong>
+            </div>
+            <div class="header-stat-sep"></div>
+            <div class="header-stat" data-color="ok">
+                <img src="/static/assets/icons/check-verified.svg" class="svg-icon" width="14" height="14" alt="">
+                <span class="header-stat-label">Active</span>
+                <strong id="ok-count">0</strong>
+            </div>
+            <div class="header-stat-sep"></div>
+            <div class="header-stat">
+                <img src="/static/assets/icons/file-text.svg" class="svg-icon" width="14" height="14" alt="">
+                <span class="header-stat-label">Requests</span>
+                <strong id="requests-count">0</strong>
+            </div>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="top-bar-user" id="top-bar-user" onclick="toggleUserMenu(event)">
+            <div class="user-avatar" id="user-avatar">
+                <img src="/static/assets/icons/user.svg" class="svg-icon" width="18" height="18" alt="">
+            </div>
+            <span class="user-name" id="user-name">User</span>
+            <svg class="user-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </div>
+        <div class="user-dropdown" id="user-dropdown">
+            <div class="user-dropdown-header">
+                <div class="user-dropdown-name" id="dropdown-user-name">User</div>
+                <div class="user-dropdown-email" id="dropdown-user-email">user@example.com</div>
+            </div>
+            <div class="user-dropdown-sep"></div>
+            <button class="user-dropdown-item" onclick="openProfileModal(event)">
+                <img src="/static/assets/icons/edit.svg" class="svg-icon" width="14" height="14" alt="">
+                Edit Profile
+            </button>
+            <button class="user-dropdown-item danger" onclick="logout(event)">
+                <img src="/static/assets/icons/log-out.svg" class="svg-icon" width="14" height="14" alt="">
+                Logout
+            </button>
+        </div>
+    </div>
+</header>

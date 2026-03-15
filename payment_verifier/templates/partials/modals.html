@@ -1,0 +1,139 @@
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <h2 id="modal-title">Add Project</h2>
+        <input type="hidden" id="modal-project-id">
+        <div id="modal-name-group">
+            <label for="modal-name">Project Name</label>
+            <input type="text" id="modal-name" placeholder="e.g. MyProject-App" autocomplete="off">
+        </div>
+        <div id="modal-status-group">
+            <label for="modal-status">Status</label>
+            <select id="modal-status">
+                <option value="OK">OK</option>
+                <option value="UNPAID">UNPAID</option>
+                <option value="PENDING">PENDING</option>
+                <option value="OVERDUE">OVERDUE</option>
+                <option value="PARTIAL">PARTIAL</option>
+                <option value="SUSPENDED">SUSPENDED</option>
+            </select>
+        </div>
+        <p class="modal-section-label">Customer</p>
+        <label for="modal-customer-name">Company / Name</label>
+        <input type="text" id="modal-customer-name" placeholder="e.g. Acme Corp" autocomplete="off">
+        <label for="modal-customer-address">Address</label>
+        <textarea id="modal-customer-address" rows="2" placeholder="e.g. 123 Main St, Prague"></textarea>
+        <label for="modal-project-url">Project URL</label>
+        <input type="url" id="modal-project-url" placeholder="e.g. https://example.com" autocomplete="off">
+        <p class="modal-section-label">Contact Person</p>
+        <label for="modal-contact-person">Name</label>
+        <input type="text" id="modal-contact-person" placeholder="e.g. John Doe" autocomplete="off">
+        <label for="modal-contact-email">Email</label>
+        <input type="email" id="modal-contact-email" placeholder="e.g. john@acme.com" autocomplete="off">
+        <label for="modal-contact-phone">Phone</label>
+        <input type="tel" id="modal-contact-phone" placeholder="e.g. +421 900 123 456" autocomplete="off">
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn" id="modal-submit" onclick="submitModal()">Create</button>
+        </div>
+    </div>
+</div>
+
+<div class="me-overlay" id="me-global-overlay">
+    <div class="me-panel">
+        <div class="me-header">
+            <div class="me-title-wrap">
+                <img src="/static/assets/icons/mail.svg" class="svg-icon" width="20" height="20" alt="">
+                <div class="me-title-text">
+                    <h2>Global Status Messages</h2>
+                    <p>Default messages returned on HTTP 402</p>
+                </div>
+            </div>
+            <div class="me-actions">
+                <button class="btn btn-sm btn-warning" onclick="resetAllGlobalMessages()">Reset All</button>
+                <button class="me-close" onclick="closeGlobalMsgEditor()" title="Close">&times;</button>
+            </div>
+        </div>
+        <div class="me-body" id="me-global-list"></div>
+    </div>
+</div>
+
+<div class="me-overlay" id="me-project-overlay">
+    <div class="me-panel">
+        <div class="me-header">
+            <div class="me-title-wrap">
+                <img src="/static/assets/icons/mail.svg" class="svg-icon" width="20" height="20" alt="">
+                <div class="me-title-text">
+                    <h2>Messages - <span id="pmsg-project-name"></span></h2>
+                    <p>Override per-project or fall back to global defaults</p>
+                </div>
+            </div>
+            <div class="me-actions">
+                <button class="btn btn-sm btn-warning" onclick="resetAllProjectMessages()">Reset All</button>
+                <button class="me-close" onclick="closeProjectMsgEditor()" title="Close">&times;</button>
+            </div>
+        </div>
+        <div class="me-body" id="me-project-list"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="profile-overlay" style="display:none">
+    <div class="modal modal-narrow">
+        <h2>Edit Profile</h2>
+        <form onsubmit="handleProfileUpdate(event)">
+            <p class="modal-section-label">Account Information</p>
+
+            <label for="profile-name">Name</label>
+            <input type="text" id="profile-name" required autocomplete="name">
+
+            <label for="profile-email">Email</label>
+            <input type="email" id="profile-email" required autocomplete="email">
+
+            <p class="modal-section-label">Change Password</p>
+
+            <label for="profile-current-password">Current Password</label>
+            <input type="password" id="profile-current-password" placeholder="Required only when changing password"
+                autocomplete="current-password">
+
+            <label for="profile-new-password">New Password</label>
+            <input type="password" id="profile-new-password" placeholder="Min 8 characters" minlength="8"
+                autocomplete="new-password" oninput="checkPasswordStrength()">
+
+            <div id="password-strength" class="password-strength-wrap" style="display:none">
+                <div class="strength-bars">
+                    <div class="strength-bar" id="password-strength-bar-1"></div>
+                    <div class="strength-bar" id="password-strength-bar-2"></div>
+                    <div class="strength-bar" id="password-strength-bar-3"></div>
+                    <div class="strength-bar" id="password-strength-bar-4"></div>
+                </div>
+                <div id="password-strength-text" class="strength-text"></div>
+                <ul class="password-requirements">
+                    <li id="req-length">At least 8 characters</li>
+                    <li id="req-uppercase">At least one uppercase letter</li>
+                    <li id="req-lowercase">At least one lowercase letter</li>
+                    <li id="req-number">At least one number</li>
+                </ul>
+            </div>
+
+            <label for="profile-confirm-password">Confirm New Password</label>
+            <input type="password" id="profile-confirm-password" placeholder="Re-enter new password"
+                autocomplete="new-password" oninput="checkPasswordMatch()">
+            <div id="password-match-error" class="password-match-error">Passwords do not match</div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeProfileModal()">Cancel</button>
+                <button type="submit" class="btn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-dialog">
+        <h4>Confirm</h4>
+        <p></p>
+        <div class="confirm-actions">
+            <button class="btn btn-secondary" onclick="confirmNo()">Cancel</button>
+            <button class="btn" onclick="confirmYes()">Confirm</button>
+        </div>
+    </div>
+</div>

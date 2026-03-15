@@ -44,8 +44,8 @@ describe("icon", () => {
 
 describe("formatDate", () => {
     it("returns dash for null/undefined", () => {
-        expect(formatDate(null)).toBe("—");
-        expect(formatDate("")).toBe("—");
+        expect(formatDate(null)).toBe("-");
+        expect(formatDate("")).toBe("-");
     });
 
     it("formats ISO date", () => {
