@@ -7,7 +7,7 @@ source "${SCRIPT_DIR}/helpers.sh"
 source "${SCRIPT_DIR}/build.sh"
 
 function deploy_payment_verifier() {
-    local SERVICE_HOST="root@x.x.x.x"  # Remote server SSH address
+    local SERVICE_HOST="root@10.10.5.46"  # Remote server SSH address
     local ENV_NAME="${1:-prod}"
     local SERVER_WORK_DIR="/root/docker/payment_verifier"
     local DOCKER_DIR="${PROJECT_ROOT}/docker"

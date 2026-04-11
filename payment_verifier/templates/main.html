@@ -3,14 +3,20 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#101010">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Payment Verifier">
     <title>Payment Verifier</title>
     <link rel="icon" href="/static/assets/icons/favicon.ico" type="image/x-icon">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/assets/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/static/assets/css/main.css?v={{ version }}">
 </head>
 
 <body>
-    
+
     {% include "partials/auth.html" %}
 
     <div class="app-layout" id="app-wrap" style="display:none">
@@ -158,6 +164,32 @@
     <div class="toast-container" id="toasts"></div>
 
     <script src="/static/js/admin.bundle.js?v={{ version }}"></script>
+    <script>
+        (function () {
+            /* Nuke old SW caches on version change */
+            var v = '{{ version }}';
+            if (localStorage.getItem('pv_v') !== v) {
+                localStorage.setItem('pv_v', v);
+                if ('caches' in window) {
+                    caches.keys().then(function (ks) {
+                        ks.forEach(function (k) { caches.delete(k); });
+                    });
+                }
+            }
+            if ('serviceWorker' in navigator) {
+                /* Auto-reload when new SW activates */
+                var reloading = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (reloading) return;
+                    reloading = true;
+                    window.location.reload();
+                });
+                navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
+                    reg.update();
+                }).catch(function () {});
+            }
+        })();
+    </script>
 </body>
 
 </html>
